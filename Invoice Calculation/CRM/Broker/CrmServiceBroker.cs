@@ -48,38 +48,5 @@ namespace InvoiceCalculation.CRM.Broker
         {
             return (SdkTypeProxy.RetrieveMultipleResponse)this.Service.Execute(request);
         }
-
-        /*
-        var password = new System.Security.SecureString();
-        foreach (Char c in "PCItri13!".ToCharArray())
-        {
-            password.AppendChar(c);
-        }
-        password.MakeReadOnly();
-
-        var settings = new CRM.CrmServiceSettings ()
-        {
-            OrganizationName = "TestEnvironment",
-            DeploymentType = 2,
-            DomainName = "pension1",
-            Password = password,
-            Username = "tricension",
-            ServiceUrl = "https://dev.pension-consultants.com/MSCRMServices/2007/SPLA/CrmDiscoveryService.asmx"
-        };
-
-        CRM.Globals.Initialize(settings);
-
-        var request = new CRM.Model.AuthenticationRequest()
-        {
-            CrmTicket = CRM.Globals.CrmServiceSettings.ServiceUrl,
-            DomainName = CRM.Globals.CrmServiceSettings.DomainName,
-            OrganizationName = CRM.Globals.CrmServiceSettings.OrganizationName,
-            Password = CRM.Globals.CrmServiceSettings.Password,
-            Username = CRM.Globals.CrmServiceSettings.Username
-        };
-
-        var planLogic = new CRM.Data.PlanAccount(request);
-        var plans = planLogic.Retrieve();
-        */
     }
 }
