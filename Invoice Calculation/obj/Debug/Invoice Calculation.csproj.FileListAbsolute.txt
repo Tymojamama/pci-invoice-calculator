@@ -1,0 +1,6 @@
+c:\users\zallen\documents\visual studio 2013\Projects\Invoice Calculation\Invoice Calculation\bin\Debug\Invoice Calculation.exe.config
+C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\bin\Debug\Invoice Calculation.exe
+C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\bin\Debug\Invoice Calculation.pdb
+C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\Invoice Calculation.exe
+C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\Invoice Calculation.pdb
+C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\bin\Debug\InvoiceCalculation.exe.config

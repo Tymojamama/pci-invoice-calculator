@@ -1,0 +1,10 @@
+ProductTypeId,Name,FeeScheduleId,IsTierOnly,BillingFrequency,BillingSchedule,BillingLength,Notes
+1,3(21) CORE Complete,1,0,Quarterly,In Advance,Ongoing,"New, in advance engagements must be billed in arrears and in advance for first invoice"
+2,3(38) CORE Complete,1,0,Quarterly,In Advance,Ongoing,
+3,3(21) Investment Complete,7,0,Quarterly,In Advance,Ongoing,
+4,3(38) Investment Complete,2,0,Quarterly,In Advance,Ongoing,
+5,ERISA Complete,5,1,Quarterly,In Advance,Ongoing,
+6,Vendor Monitoring,3,0,Quarterly,In Advance,Annual,Full annual fee billed pro rata through the end of the year
+7,Vendor Search,4,0,,,,"Billed 50% at contract signing, rest at 5 months after engagement start"
+8,Retirement Complete,6,0,Quarterly,In Advance,Ongoing,
+9,Hourly,0,0,Monthly,In Arrears,,"If client has quarterly engagement, billed quarterly"
