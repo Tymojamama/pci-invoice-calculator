@@ -18,7 +18,7 @@ using Model = InvoiceCalculation.Model;
  * :::To Do Later:::
  * Add audit history to plan asset history entity and invoice entity
  * Vendor monitoring termination invoice fee/invoice credit
- * Billing type history (in advanced/in arrears) - move from engagement/product type to fee schedule data
+ * Splitting revenue for isserviceongoing, istiered engagement that replace another isserviceongoing, istiered engagement
  * 
  * :::Complete:::
  * Invoice Term (30 days to pay default, 90 days for particular clients)
@@ -39,11 +39,12 @@ using Model = InvoiceCalculation.Model;
  * Match .csv file product type id's to CRM product type id's
  * Add new product types for Core Complete & Investment Complete -> match 3(21)
  * New engagement in advanced (or billing type change) -> 2 invoices
+ * Billing type history (in advanced/in arrears) - move from engagement/product type to fee schedule data
  * 
  * :::Schedule:::
  * ☑ Calculator Buildout - 3 hours remaining
  * ☑ CRM Buildout - 2 hours
- * ☐ CRM Integration - 4 hours
+ * ☑ CRM Integration - 4 hours
  * ☐ Calculator UI/Application Buildout - 6 hours
  * ☐ Invoice Report Buildout - 4 hours
  * ☐ QuickBooks Integration - 8 hours
