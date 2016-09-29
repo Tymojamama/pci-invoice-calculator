@@ -23,11 +23,23 @@ namespace InvoiceCalculation.Model
 
         }
 
+        public bool IsAfterDateTime(DateTime dateTime)
+        {
+            var after = false;
+
+            if (this.StartDate.Date <= dateTime.Date)
+            {
+                after = true;
+            }
+
+            return after;
+        }
+
         public bool IsBeforeDateTime(DateTime dateTime)
         {
             var before = false;
 
-            if (this.EndDate >= dateTime)
+            if (this.EndDate != null && ((DateTime)this.EndDate).Date >= dateTime.Date)
             {
                 before = true;
             }
@@ -45,12 +57,12 @@ namespace InvoiceCalculation.Model
             var after = false;
             var before = false;
 
-            if (this.StartDate <= dateTime)
+            if (this.StartDate.Date <= dateTime.Date)
             {
                 after = true;
             }
 
-            if (this.EndDate >= dateTime)
+            if (this.EndDate != null && ((DateTime)this.EndDate).Date >= dateTime.Date)
             {
                 before = true;
             }

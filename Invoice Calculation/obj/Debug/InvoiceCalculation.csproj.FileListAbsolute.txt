@@ -1,7 +1,8 @@
-C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\bin\Debug\InvoiceCalculation.exe
 C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\bin\Debug\InvoiceCalculation.exe.config
-C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\InvoiceCalculation.exe
-C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\InvoiceCalculation.pdb
+C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\bin\Debug\InvoiceCalculation.exe
 C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\bin\Debug\InvoiceCalculation.pdb
 C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\bin\Debug\microsoft.crm.sdk.dll
 C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\bin\Debug\microsoft.crm.sdktypeproxy.dll
+C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\InvoiceCalculation.exe
+C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\InvoiceCalculation.pdb
+C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\InvoiceCalculation.csprojResolveAssemblyReference.cache

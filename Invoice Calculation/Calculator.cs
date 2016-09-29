@@ -53,7 +53,7 @@ namespace InvoiceCalculation
 
         public static InvoiceCalculation.Model.BillingType GetInvoiceBillingType(Model.ProductType productType, DateTime clientFeeScheduleDate, DateTime billingDate, bool isNew)
         {
-            Model.BillingType result = Model.BillingType.InAdvanced;
+            var result = Model.BillingType.InAdvanced;
             var feeSchedules = Data.FeeSchedule
                 .GetFeeSchedules(productType, clientFeeScheduleDate, billingDate)
                 .OrderByDescending(x => x.EndDate ?? DateTime.MaxValue)

@@ -64,7 +64,8 @@ namespace InvoiceCalculation
             CRM.Globals.Initialize();
 
             // testing
-            //args = new string[] { "-g", "12/31/2015" };
+            args = new string[] { "-g", "03/31/2016" };
+            //args = new string[] { "-TI" };
 
             if (args.Length == 0)
             {
@@ -73,6 +74,11 @@ namespace InvoiceCalculation
             else if (args[0] == "-T")
             {
                 Test.TestMachine.Execute();
+            }
+            else if (args[0] == "-TI")
+            {
+                var testMachine = new Test.Invoice.TestMachine();
+                testMachine.Execute();
             }
             else if (args[0] == "-t")
             {
@@ -275,6 +281,9 @@ namespace InvoiceCalculation
             var beginningOfQuarter4 = DateTime.Parse("10/01/" + startDate.Year.ToString());
             var endingOfQuarter4 = DateTime.Parse("12/31/" + startDate.Year.ToString());
             var beginningOfQuarter5 = DateTime.Parse("01/01/" + (startDate.Year + 1).ToString());
+
+            // only beginning of day for accuracy
+            startDate = startDate.Date;
 
             var totalDays = 0d;
             var remainingDays = 0d;

@@ -90,6 +90,12 @@ namespace InvoiceCalculation.CRM.Model
             set { base.SetPropertyValue<decimal>("new_fixedprojectfee", PropertyType.Money, value); }
         }
 
+        public decimal AnnualFeeOffset
+        {
+            get { return base.GetPropertyValue<decimal>("new_annualfeeoffset", PropertyType.Decimal, 0m); }
+            set { base.SetPropertyValue<decimal>("new_annualfeeoffset", PropertyType.Decimal, value); }
+        }
+
         public bool IsWithinDateTime(DateTime dateTime)
         {
             var after = false;
@@ -214,49 +220,101 @@ namespace InvoiceCalculation.CRM.Model
         public DateTime GetInvoicePeriodStartDate(DateTime billingDate)
         {
             var productType = this.GetProductTypeDetail();
-            if (productType.BillingFrequency == "Monthly")
+            var billingType = Calculator.GetInvoiceBillingType(this.GetProductTypeDetail(), this.EffectiveDate, billingDate, this.IsNewOnBillingDate(billingDate));
+            var inAdvanced = InvoiceCalculation.Model.BillingType.InAdvanced;
+            var inArrears = InvoiceCalculation.Model.BillingType.InArrears;
+
+            DateTime result;
+
+            if (productType.BillingFrequency == "Monthly" && billingType == inAdvanced)
             {
                 var firstDayOfMonth = new DateTime(billingDate.Year, billingDate.Month, 1);
                 var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
-                return firstDayOfMonth;
+                result = firstDayOfMonth.AddMonths(1);
             }
-            else if (productType.BillingFrequency == "Quarterly")
+            else if (productType.BillingFrequency == "Monthly" && billingType == inArrears)
+            {
+                var firstDayOfMonth = new DateTime(billingDate.Year, billingDate.Month, 1);
+                var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+                result = firstDayOfMonth;
+            }
+            else if (productType.BillingFrequency == "Quarterly" && billingType == inAdvanced)
             {
                 var billingDateQuarter = (billingDate.Month - 1) / 3 + 1;
                 DateTime firstDayOfQuarter = new DateTime(billingDate.Year, (billingDateQuarter - 1) * 3 + 1, 1);
                 DateTime lastDayOfQuarter = firstDayOfQuarter.AddMonths(3).AddDays(-1);
-                return firstDayOfQuarter;
+                result = firstDayOfQuarter.AddMonths(3);
+            }
+            else if (productType.BillingFrequency == "Quarterly" && billingType == inArrears)
+            {
+                var billingDateQuarter = (billingDate.Month - 1) / 3 + 1;
+                DateTime firstDayOfQuarter = new DateTime(billingDate.Year, (billingDateQuarter - 1) * 3 + 1, 1);
+                DateTime lastDayOfQuarter = firstDayOfQuarter.AddMonths(3).AddDays(-1);
+                result = firstDayOfQuarter;
             }
             else // yearly
             {
                 var firstDayOfYear = new DateTime(billingDate.Year, 1, 1);
                 var lastDayOfYear = new DateTime(billingDate.Year, 12, 31);
-                return firstDayOfYear;
+                result = firstDayOfYear;
             }
+
+            if (result < this.EffectiveDate)
+            {
+                result = this.EffectiveDate;
+            }
+
+            return result;
         }
 
         public DateTime GetInvoicePeriodEndDate(DateTime billingDate)
         {
             var productType = this.GetProductTypeDetail();
-            if (productType.BillingFrequency == "Monthly")
+            var billingType = Calculator.GetInvoiceBillingType(this.GetProductTypeDetail(), this.EffectiveDate, billingDate, this.IsNewOnBillingDate(billingDate));
+            var inAdvanced = InvoiceCalculation.Model.BillingType.InAdvanced;
+            var inArrears = InvoiceCalculation.Model.BillingType.InArrears;
+
+            DateTime result;
+
+            if (productType.BillingFrequency == "Monthly" && billingType == inAdvanced)
             {
                 var firstDayOfMonth = new DateTime(billingDate.Year, billingDate.Month, 1);
                 var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
-                return lastDayOfMonth;
+                result = lastDayOfMonth.AddMonths(1);
             }
-            else if (productType.BillingFrequency == "Quarterly")
+            else if (productType.BillingFrequency == "Monthly" && billingType == inArrears)
+            {
+                var firstDayOfMonth = new DateTime(billingDate.Year, billingDate.Month, 1);
+                var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+                result = lastDayOfMonth;
+            }
+            else if (productType.BillingFrequency == "Quarterly" && billingType == inAdvanced)
             {
                 var billingDateQuarter = (billingDate.Month - 1) / 3 + 1;
                 DateTime firstDayOfQuarter = new DateTime(billingDate.Year, (billingDateQuarter - 1) * 3 + 1, 1);
                 DateTime lastDayOfQuarter = firstDayOfQuarter.AddMonths(3).AddDays(-1);
-                return lastDayOfQuarter;
+                result = lastDayOfQuarter.AddMonths(3);
+            }
+            else if (productType.BillingFrequency == "Quarterly" && billingType == inArrears)
+            {
+                var billingDateQuarter = (billingDate.Month - 1) / 3 + 1;
+                DateTime firstDayOfQuarter = new DateTime(billingDate.Year, (billingDateQuarter - 1) * 3 + 1, 1);
+                DateTime lastDayOfQuarter = firstDayOfQuarter.AddMonths(3).AddDays(-1);
+                result = lastDayOfQuarter;
             }
             else // yearly
             {
                 var firstDayOfYear = new DateTime(billingDate.Year, 1, 1);
                 var lastDayOfYear = new DateTime(billingDate.Year, 12, 31);
-                return lastDayOfYear;
+                result = lastDayOfYear;
             }
+
+            if (result > this.ContractTerminationDate)
+            {
+                result = this.ContractTerminationDate;
+            }
+
+            return result;
         }
         
         public Guid GetGeneralLedgerAccountId()

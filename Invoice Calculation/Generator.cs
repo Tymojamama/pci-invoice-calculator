@@ -13,7 +13,7 @@ namespace InvoiceCalculation
         private List<CRM.Model.PlanAccount> _planAccounts;
         private List<CRM.Model.PlanEngagement> _planEngagements;
         private List<CRM.Model.PlanAsset> _planAssets;
-        private List<Model.Invoice> _calculatedInvoices;
+        private List<Model.Invoice> _generatedInvoices;
 
         public DateTime BillingDate;
 
@@ -43,66 +43,79 @@ namespace InvoiceCalculation
 
         private void _calculateInvoices()
         {
-            this._calculatedInvoices = new List<Model.Invoice>();
+            this._generatedInvoices = new List<Model.Invoice>();
             foreach (var engagement in this._engagements.FindAll(x => x.ProductType != -1))
             {
-                if (engagement.Id == new Guid("A482F80A-2F80-E611-943A-00155D288102"))
-                {
+                var invoices = CalculateInvoice(engagement);
+                this._generatedInvoices.AddRange(invoices);
+            }
+        }
 
-                }
-                var engagementProductType = engagement.GetProductTypeDetail();
-                var engagementEffectiveDate = (DateTime)engagement.EffectiveDate;
-                var engagementTerminationDate = engagement.ContractTerminationDate;
-                var engagementTierLevel = (int)engagement.Tier;
-                var planAssetValue = engagement.GetAssetsForInvoice(this.BillingDate, this._planEngagements, this._planAccounts, this._planAssets);
-                var isNewEngagement = engagement.IsNewOnBillingDate(this.BillingDate);
-                var isTerminatedEngagement = engagement.IsTerminatedOnBillingDate(this.BillingDate);
+        public List<Model.Invoice> CalculateInvoice(Guid engagementId)
+        {
+            var engagement = this._engagements.Find(x => x.Id == engagementId);
+            return CalculateInvoice(engagement);
+        }
 
-                var annualFee = 0m;
-                var invoiceFee = 0m;
-                var invoiceCredit = 0m;
+        public List<Model.Invoice> CalculateInvoice(CRM.Model.Engagement engagement)
+        {
+            var result = new List<Model.Invoice>();
 
-                var erisaVendorProductTypes = new int[] { 2, 5, 8, 11, 13, 14 };
+            var engagementProductType = engagement.GetProductTypeDetail();
+            var engagementEffectiveDate = (DateTime)engagement.EffectiveDate;
+            var engagementTerminationDate = engagement.ContractTerminationDate;
+            var engagementTierLevel = (int)engagement.Tier;
+            var planAssetValue = engagement.GetAssetsForInvoice(this.BillingDate, this._planEngagements, this._planAccounts, this._planAssets);
+            var isNewEngagement = engagement.IsNewOnBillingDate(this.BillingDate);
+            var isTerminatedEngagement = engagement.IsTerminatedOnBillingDate(this.BillingDate);
+
+            var annualFee = 0m;
+            var invoiceFee = 0m;
+            var invoiceCredit = 0m;
+
+            var erisaVendorProductTypes = new int[] { 2, 5, 8, 11, 13, 14 };
+            if (planAssetValue != 0 || erisaVendorProductTypes.Contains(engagement.ProductType))
+            {
+                annualFee = Calculator.CalculateAnnualFee(engagementProductType, this.BillingDate, engagementEffectiveDate, planAssetValue, engagementTierLevel);
+                invoiceFee = Calculator.CalculateInvoiceFee(annualFee, engagementProductType, this.BillingDate, engagementEffectiveDate, isTerminatedEngagement, isNewEngagement, engagementEffectiveDate);
+                invoiceFee = invoiceFee + engagement.FixedProjectFeeForInvoicePeriod(this.BillingDate);
+                invoiceFee = invoiceFee - engagement.AnnualFeeOffset;
+                invoiceCredit = Calculator.CalculateInvoiceCredit(isTerminatedEngagement, invoiceFee, engagementTerminationDate, engagementProductType);
+            }
+
+            var invoice = CreateInvoiceFromEngagement(engagement);
+            invoice.AnnualFee = annualFee;
+            invoice.InvoiceFee = invoiceFee;
+            invoice.InvoiceCredit = invoiceCredit;
+            invoice.TotalPlanAssetsUsed = planAssetValue;
+            invoice.BillingType = Calculator.GetInvoiceBillingType(engagementProductType, engagementEffectiveDate, this.BillingDate, isNewEngagement);
+
+            result.Add(invoice);
+
+            // run for next billing period as well
+            if (isNewEngagement && engagementProductType.BillingSchedule == "In Advance")
+            {
+                isNewEngagement = false;
+                var newInvoice = CreateInvoiceFromEngagement(engagement);
+                newInvoice.TotalPlanAssetsUsed = planAssetValue;
+                newInvoice.BillingType = Calculator.GetInvoiceBillingType(engagementProductType, engagementEffectiveDate, this.BillingDate, isNewEngagement);
                 if (planAssetValue != 0 || erisaVendorProductTypes.Contains(engagement.ProductType))
                 {
-                    annualFee = Calculator.CalculateAnnualFee(engagementProductType, this.BillingDate, engagementEffectiveDate, planAssetValue, engagementTierLevel);
-                    invoiceFee = Calculator.CalculateInvoiceFee(annualFee, engagementProductType, this.BillingDate, engagementEffectiveDate, isTerminatedEngagement, isNewEngagement, engagementEffectiveDate);
-                    invoiceFee = invoiceFee + engagement.FixedProjectFeeForInvoicePeriod(this.BillingDate);
-                    invoiceCredit = Calculator.CalculateInvoiceCredit(isTerminatedEngagement, invoiceFee, engagementTerminationDate, engagementProductType);
+                    newInvoice.AnnualFee = Calculator.CalculateAnnualFee(engagementProductType, this.BillingDate, engagementEffectiveDate, planAssetValue, engagementTierLevel);
+                    newInvoice.InvoiceFee = Calculator.CalculateInvoiceFee(annualFee, engagementProductType, this.BillingDate, engagementEffectiveDate, isTerminatedEngagement, isNewEngagement, engagementEffectiveDate);
+                    newInvoice.InvoiceFee = newInvoice.InvoiceFee + engagement.FixedProjectFeeForInvoicePeriod(this.BillingDate);
+                    newInvoice.InvoiceCredit = Calculator.CalculateInvoiceCredit(isTerminatedEngagement, invoiceFee, engagementTerminationDate, engagementProductType);
                 }
 
-                var invoice = CreateInvoiceFromEngagement(engagement);
-                invoice.AnnualFee = annualFee;
-                invoice.InvoiceFee = invoiceFee;
-                invoice.InvoiceCredit = invoiceCredit;
-                invoice.TotalPlanAssetsUsed = planAssetValue;
-                invoice.BillingType = Calculator.GetInvoiceBillingType(engagementProductType, engagementEffectiveDate, this.BillingDate, isNewEngagement);
-
-                this._calculatedInvoices.Add(invoice);
-            
-                // run for next billing period as well
-                if (isNewEngagement && engagementProductType.BillingSchedule == "In Advance")
-                {
-                    isNewEngagement = false;
-                    var newInvoice = CreateInvoiceFromEngagement(engagement);
-                    newInvoice.TotalPlanAssetsUsed = planAssetValue;
-                    newInvoice.BillingType = Calculator.GetInvoiceBillingType(engagementProductType, engagementEffectiveDate, this.BillingDate, isNewEngagement);
-                    if (planAssetValue != 0 || erisaVendorProductTypes.Contains(engagement.ProductType))
-                    {
-                        newInvoice.AnnualFee = Calculator.CalculateAnnualFee(engagementProductType, this.BillingDate, engagementEffectiveDate, planAssetValue, engagementTierLevel);
-                        newInvoice.InvoiceFee = Calculator.CalculateInvoiceFee(annualFee, engagementProductType, this.BillingDate, engagementEffectiveDate, isTerminatedEngagement, isNewEngagement, engagementEffectiveDate);
-                        newInvoice.InvoiceFee = newInvoice.InvoiceFee + engagement.FixedProjectFeeForInvoicePeriod(this.BillingDate);
-                        newInvoice.InvoiceCredit = Calculator.CalculateInvoiceCredit(isTerminatedEngagement, invoiceFee, engagementTerminationDate, engagementProductType);
-                    }
-
-                    this._calculatedInvoices.Add(newInvoice);
-                }
-
-                if (isTerminatedEngagement)
-                {
-
-                }
+                result.Add(newInvoice);
             }
+
+            if (isTerminatedEngagement)
+            {
+
+            }
+
+            return result;
         }
 
         private Model.Invoice CreateInvoiceFromEngagement(CRM.Model.Engagement engagement)
@@ -112,7 +125,7 @@ namespace InvoiceCalculation
             invoice.BilledOn = this.BillingDate.AddHours(12);
             invoice.StartDate = DateTime.SpecifyKind(engagement.GetInvoicePeriodStartDate(this.BillingDate), DateTimeKind.Utc).AddHours(12);
             invoice.EndDate = DateTime.SpecifyKind(engagement.GetInvoicePeriodEndDate(this.BillingDate), DateTimeKind.Utc).AddHours(12);
-            invoice.EarnedOn = DateTime.SpecifyKind(engagement.GetInvoicePeriodEndDate(this.BillingDate), DateTimeKind.Utc).AddHours(12);
+            invoice.EarnedOn = invoice.EndDate;
             invoice.DaysToPay = engagement.GetDaysToPay();
             invoice.GeneralLedgerAccountId = engagement.GetGeneralLedgerAccountId();
             invoice.EngagementId = engagement.Id;
@@ -123,7 +136,7 @@ namespace InvoiceCalculation
         private void _createInvoiceRecordsInCrm()
         {
             var currentInvoices = CRM.Data.Invoice.Retrieve(this.BillingDate.AddHours(12));
-            foreach (var invoice in this._calculatedInvoices)
+            foreach (var invoice in this._generatedInvoices)
             {
                 // insert invoice record into crm with invoice credit line item if applicable
                 // update invoice record if it already exists, don't update if statusreason is locked
