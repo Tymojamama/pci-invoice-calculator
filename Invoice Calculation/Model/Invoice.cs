@@ -28,6 +28,7 @@ namespace InvoiceCalculation.Model
         public Guid EngagementId;
         public Guid ClientId;
         public Guid GeneralLedgerAccountId;
+        public List<InvoiceLineItem> LineItems = new List<InvoiceLineItem>();
 
         public Invoice()
         {

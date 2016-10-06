@@ -39,6 +39,9 @@
       <HintPath>..\..\..\..\Local Git Repository\VSP\References\microsoft.crm.sdktypeproxy.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="PensionConsultants.Data">
+      <HintPath>\\PC03\Common Ground\IT\Libraries\PensionConsultants.Data.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Web" />
@@ -54,11 +57,13 @@
     <Compile Include="CRM\Data\Account.cs" />
     <Compile Include="CRM\Data\ComponentTask.cs" />
     <Compile Include="CRM\Data\Invoice.cs" />
+    <Compile Include="CRM\Data\InvoiceLineItem.cs" />
     <Compile Include="CRM\Data\PlanAsset.cs" />
     <Compile Include="CRM\Data\PlanEngagement.cs" />
     <Compile Include="CRM\Data\TaskTime.cs" />
     <Compile Include="CRM\Model\ComponentTask.cs" />
     <Compile Include="CRM\Model\Invoice.cs" />
+    <Compile Include="CRM\Model\InvoiceLineItem.cs" />
     <Compile Include="CRM\Model\PlanAsset.cs" />
     <Compile Include="CRM\Model\PlanEngagement.cs" />
     <Compile Include="CRM\Model\TaskTime.cs" />
@@ -78,9 +83,11 @@
     <Compile Include="CRM\Broker\IAuthenticationRequest.cs" />
     <Compile Include="CRM\Globals.cs" />
     <Compile Include="Data\FeeSchedule.cs" />
+    <Compile Include="Data\InvoiceMaster.cs" />
     <Compile Include="Data\ProductType.cs" />
     <Compile Include="Generator.cs" />
     <Compile Include="Model\Invoice.cs" />
+    <Compile Include="Model\InvoiceLineItem.cs" />
     <Compile Include="Model\ProductType.cs" />
     <Compile Include="Model\FeeSchedule.cs" />
     <Compile Include="Program.cs" />

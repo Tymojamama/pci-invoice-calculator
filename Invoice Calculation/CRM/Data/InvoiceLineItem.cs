@@ -11,91 +11,86 @@ using Model = InvoiceCalculation.CRM.Model;
 
 namespace InvoiceCalculation.CRM.Data
 {
-    public static class Invoice
+    public static class InvoiceLineItem
     {
-        private static string _tableName = "new_customerinvoice";
+        private static string _tableName = "new_customerinvoicelineitem";
 
-        public static List<Model.Invoice> Retrieve()
+        public static List<Model.InvoiceLineItem> Retrieve()
         {
             var request = Globals.GetRetrieveMultipleRequest(_tableName);
             var retrieveMultipleResponse = Globals.CrmServiceBroker.ExecuteRetrieveMultipleRequest(request);
             var businessEntityCollection = retrieveMultipleResponse.BusinessEntityCollection;
 
-            var result = new List<Model.Invoice>();
+            var result = new List<Model.InvoiceLineItem>();
             foreach (var businessEntity in businessEntityCollection.BusinessEntities)
             {
                 var dynamicEntity = (DynamicEntity)businessEntity;
-                var invoice = new CRM.Model.Invoice(dynamicEntity);
-                result.Add(invoice);
+                var invoiceLineItem = new CRM.Model.InvoiceLineItem(dynamicEntity);
+                result.Add(invoiceLineItem);
             }
 
             return result;
         }
 
-        public static Model.Invoice Retrieve(Guid id)
+        public static Model.InvoiceLineItem Retrieve(Guid id)
         {
             var criteria = new FilterExpression();
-            criteria.AddCondition("new_customerinvoiceid", ConditionOperator.Equal, id);
+            criteria.AddCondition("new_customerinvoicelineitemid", ConditionOperator.Equal, id);
 
             var request = Globals.GetRetrieveMultipleRequest(_tableName, criteria);
             var retrieveMultipleResponse = Globals.CrmServiceBroker.ExecuteRetrieveMultipleRequest(request);
             var businessEntityCollection = retrieveMultipleResponse.BusinessEntityCollection;
 
-            var result = new List<Model.Invoice>();
+            var result = new List<Model.InvoiceLineItem>();
             foreach (var businessEntity in businessEntityCollection.BusinessEntities)
             {
                 var dynamicEntity = (DynamicEntity)businessEntity;
-                var invoice = new CRM.Model.Invoice(dynamicEntity);
-                result.Add(invoice);
+                var invoiceLineItem = new CRM.Model.InvoiceLineItem(dynamicEntity);
+                result.Add(invoiceLineItem);
             }
 
             return result.Find(x => x.Id == id);
         }
 
-        /// <summary>
-        /// Retrieves a list of Invoices with a specified billing date
-        /// </summary>
-        /// <param name="billingDate"></param>
-        /// <returns></returns>
-        public static List<Model.Invoice> Retrieve(DateTime billingDate)
+        public static List<Model.InvoiceLineItem> Retrieve(Model.Invoice invoice)
         {
             var criteria = new FilterExpression();
-            criteria.AddCondition("new_billedon", ConditionOperator.On, billingDate);
+            criteria.AddCondition("new_customerinvoiceid", ConditionOperator.Equal, invoice.Id);
 
             var request = Globals.GetRetrieveMultipleRequest(_tableName, criteria);
             var retrieveMultipleResponse = Globals.CrmServiceBroker.ExecuteRetrieveMultipleRequest(request);
             var businessEntityCollection = retrieveMultipleResponse.BusinessEntityCollection;
 
-            var result = new List<Model.Invoice>();
+            var result = new List<Model.InvoiceLineItem>();
             foreach (var businessEntity in businessEntityCollection.BusinessEntities)
             {
                 var dynamicEntity = (DynamicEntity)businessEntity;
-                var invoice = new CRM.Model.Invoice(dynamicEntity);
-                result.Add(invoice);
+                var invoiceLineItem = new CRM.Model.InvoiceLineItem(dynamicEntity);
+                result.Add(invoiceLineItem);
             }
 
-            return result;
+            return result.FindAll(x => x.CustomerInvoiceId == invoice.Id);
         }
 
         /// <summary>
         /// Creates a new record if ID is empty and updates existing records.
         /// </summary>
-        /// <param name="invoice"></param>
-        public static void Save(Model.Invoice invoice, bool isNew = false)
+        /// <param name="invoiceLineItem"></param>
+        public static void Save(Model.InvoiceLineItem invoiceLineItem)
         {
             try
             {
-                if (invoice.Id == Guid.Empty || isNew == true)
+                if (invoiceLineItem.Id == Guid.Empty)
                 {
-                    invoice.Id = Guid.NewGuid();
-                    Globals.CrmServiceBroker.Service.Create(invoice.GetDynamicEntity());
+                    invoiceLineItem.Id = Guid.NewGuid();
+                    Globals.CrmServiceBroker.Service.Create(invoiceLineItem.GetDynamicEntity());
                 }
                 else
                 {
-                    Globals.CrmServiceBroker.Service.Update(invoice.GetDynamicEntity());
+                    Globals.CrmServiceBroker.Service.Update(invoiceLineItem.GetDynamicEntity());
                 }
             }
-            catch(SoapException soapEx)
+            catch (SoapException soapEx)
             {
                 Console.WriteLine("SoapException: " + soapEx.Detail);
                 Console.WriteLine("SoapException: " + soapEx.Message);

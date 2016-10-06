@@ -17,7 +17,10 @@ namespace InvoiceCalculation.CRM.Broker
         {
             var token = new CrmAuthenticationToken();
             token.AuthenticationType = 0;
+            //token.OrganizationName = "pccrm";
             token.OrganizationName = "testenvironment";
+
+            Console.WriteLine("Connecting to CRM: " + token.OrganizationName);
 
             var service = new SdkTypeProxy.CrmService();
             service.Url = "http://pci-app/mscrmservices/2007/crmservice.asmx";

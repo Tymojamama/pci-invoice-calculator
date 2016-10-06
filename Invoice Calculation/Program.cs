@@ -65,24 +65,30 @@ namespace InvoiceCalculation
 
             // testing
             args = new string[] { "-g", "03/31/2016" };
-            //args = new string[] { "-TI" };
-
+            //args = new string[] { "-t", "-i" };
+            
             if (args.Length == 0)
             {
                 RunCalculator();
             }
-            else if (args[0] == "-T")
-            {
-                Test.TestMachine.Execute();
-            }
-            else if (args[0] == "-TI")
-            {
-                var testMachine = new Test.Invoice.TestMachine();
-                testMachine.Execute();
-            }
             else if (args[0] == "-t")
             {
                 RunCalculatorWithTermination();
+            }
+            // run tests
+            else if (args[0] == "-t" && args.Count() >= 2)
+            {
+                // test calculation
+                if (args[1] == "-c")
+                {
+                    Test.TestMachine.Execute();
+                }
+                // test invoice generator
+                else if (args[1] == "-i")
+                {
+                    var testMachine = new Test.Invoice.TestMachine();
+                    testMachine.Execute();
+                }
             }
             else if (args[0] == "-n")
             {

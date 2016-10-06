@@ -109,7 +109,7 @@ namespace InvoiceCalculation.Test.Invoice
 
             if (invoice == null)
             {
-                Console.WriteLine("Invoice not generated");
+                Console.WriteLine("Billing type is incorrect.");
                 return false;
             }
 
@@ -194,9 +194,9 @@ namespace InvoiceCalculation.Test.Invoice
 	                unitTest.EndDate = DateTime.SpecifyKind(DateTime.Parse(fields[4]), DateTimeKind.Utc);
 	                unitTest.DaysToPay = int.Parse(fields[5]);
 	                unitTest.BillingType = int.Parse(fields[6]);
-	                unitTest.AnnualFee = decimal.Parse(fields[7]);
-	                unitTest.CalculatedFee = decimal.Parse(fields[8]);
-                    unitTest.TotalPlanAssetsUsed = decimal.Parse(fields[9]);
+                    unitTest.AnnualFee = decimal.Parse(fields[7].Replace("$", "").Replace("-", "0"));
+                    unitTest.CalculatedFee = decimal.Parse(fields[8].Replace("$", "").Replace("-", "0"));
+                    unitTest.TotalPlanAssetsUsed = decimal.Parse(fields[9].Replace("$", "").Replace("-", "0"));
 
                     result.Add(unitTest);
                 }

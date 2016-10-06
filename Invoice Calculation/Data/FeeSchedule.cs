@@ -62,11 +62,6 @@ namespace InvoiceCalculation.Data
         /// <returns></returns>
         public static List<Model.FeeSchedule> GetFeeSchedules(Model.ProductType productType, DateTime clientFeeScheduleDate, DateTime billingDate)
         {
-            if (clientFeeScheduleDate.Date == new DateTime(2015, 05, 16).Date)
-            {
-
-            }
-
             var feeSchedules = Data.FeeSchedule.GetFeeSchedules()
                 .FindAll(x => x.FeeScheduleId.Equals(productType.FeeScheduleId))
                 .FindAll(x => x.IsWithinDateTime(clientFeeScheduleDate))

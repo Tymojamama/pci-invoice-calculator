@@ -92,8 +92,8 @@ namespace InvoiceCalculation.CRM.Model
 
         public decimal AnnualFeeOffset
         {
-            get { return base.GetPropertyValue<decimal>("new_annualfeeoffset", PropertyType.Decimal, 0m); }
-            set { base.SetPropertyValue<decimal>("new_annualfeeoffset", PropertyType.Decimal, value); }
+            get { return base.GetPropertyValue<decimal>("new_annualfeeoffset", PropertyType.Money, 0m); }
+            set { base.SetPropertyValue<decimal>("new_annualfeeoffset", PropertyType.Money, value); }
         }
 
         public bool IsWithinDateTime(DateTime dateTime)
@@ -106,7 +106,7 @@ namespace InvoiceCalculation.CRM.Model
                 after = true;
             }
 
-            if (this.EndDate >= dateTime)
+            if (this.CurrentYear.Year == dateTime.Year)
             {
                 before = true;
             }
@@ -198,14 +198,6 @@ namespace InvoiceCalculation.CRM.Model
         {
             var result = false;
 
-            // if not in advanced, not relevant
-            var productType = this.GetProductTypeDetail();
-
-            if (productType.BillingSchedule != "In Advance")
-            {
-                return false;
-            }
-
             // only for ongoing engagements; start date and end date in same quarter
             var billingDateQuarter = (billingDate.Month - 1) / 3 + 1;
             var endDateQuarter = (this.ContractTerminationDate.Month - 1) / 3 + 1;
@@ -217,10 +209,11 @@ namespace InvoiceCalculation.CRM.Model
             return result;
         }
 
-        public DateTime GetInvoicePeriodStartDate(DateTime billingDate)
+        public DateTime GetInvoicePeriodStartDate(DateTime billingDate, bool isNew)
         {
             var productType = this.GetProductTypeDetail();
-            var billingType = Calculator.GetInvoiceBillingType(this.GetProductTypeDetail(), this.EffectiveDate, billingDate, this.IsNewOnBillingDate(billingDate));
+            var isNewOnDate = isNew;
+            var billingType = Calculator.GetInvoiceBillingType(productType, this.EffectiveDate, billingDate, isNewOnDate);
             var inAdvanced = InvoiceCalculation.Model.BillingType.InAdvanced;
             var inArrears = InvoiceCalculation.Model.BillingType.InArrears;
 
@@ -267,10 +260,11 @@ namespace InvoiceCalculation.CRM.Model
             return result;
         }
 
-        public DateTime GetInvoicePeriodEndDate(DateTime billingDate)
+        public DateTime GetInvoicePeriodEndDate(DateTime billingDate, bool isNew)
         {
             var productType = this.GetProductTypeDetail();
-            var billingType = Calculator.GetInvoiceBillingType(this.GetProductTypeDetail(), this.EffectiveDate, billingDate, this.IsNewOnBillingDate(billingDate));
+            var isNewOnDate = isNew;
+            var billingType = Calculator.GetInvoiceBillingType(productType, this.EffectiveDate, billingDate, isNewOnDate);
             var inAdvanced = InvoiceCalculation.Model.BillingType.InAdvanced;
             var inArrears = InvoiceCalculation.Model.BillingType.InArrears;
 
@@ -324,7 +318,7 @@ namespace InvoiceCalculation.CRM.Model
             return result;
         }
 
-        public decimal FixedProjectFeeForInvoicePeriod(DateTime billingDate)
+        public decimal FixedProjectFeeForInvoicePeriod(DateTime billingDate, bool isNew)
         {
             var result = 0m;
 
@@ -333,7 +327,7 @@ namespace InvoiceCalculation.CRM.Model
                 return result;
             }
 
-            if (this._finalProjectTaskCompletedWithinInvoicePeriod(billingDate))
+            if (this._finalProjectTaskCompletedWithinInvoicePeriod(billingDate, isNew))
             {
                 result = this.FixedProjectFee;
             }
@@ -346,10 +340,10 @@ namespace InvoiceCalculation.CRM.Model
         /// </summary>
         /// <param name="billingDate"></param>
         /// <returns></returns>
-        private bool _finalProjectTaskCompletedWithinInvoicePeriod(DateTime billingDate)
+        private bool _finalProjectTaskCompletedWithinInvoicePeriod(DateTime billingDate, bool isNew)
         {
-            var startDate = this.GetInvoicePeriodStartDate(billingDate);
-            var endDate = this.GetInvoicePeriodEndDate(billingDate);
+            var startDate = this.GetInvoicePeriodStartDate(billingDate, isNew);
+            var endDate = this.GetInvoicePeriodEndDate(billingDate, isNew);
             
             var projectTaskCodes = new string[] { "E6", "I10", "RA2", "V2000" };
 
