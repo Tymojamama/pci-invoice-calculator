@@ -103,6 +103,7 @@ namespace InvoiceCalculation
                 var typicalInvoiceFee = Calculator.CalculateInvoiceFee(annualFee, engagementProductType, this.BillingDate, engagementEffectiveDate, false, isNewEngagement, engagementEffectiveDate);
                 invoiceCredit = Calculator.CalculateInvoiceCredit(isTerminatedEngagement, typicalInvoiceFee, engagementTerminationDate, engagementProductType);
                 invoice.InvoiceFee = typicalInvoiceFee - invoiceCredit;
+                invoice.InvoiceCredit = 0;
             }
 
             result.Add(invoice);
