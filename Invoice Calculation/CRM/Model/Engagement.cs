@@ -96,6 +96,18 @@ namespace InvoiceCalculation.CRM.Model
             set { base.SetPropertyValue<decimal>("new_annualfeeoffset", PropertyType.Money, value); }
         }
 
+        public string StateCode
+        {
+            get { return base.GetPropertyValue<string>("statecode", PropertyType.String, ""); }
+            set { base.SetPropertyValue<string>("statecode", PropertyType.String, value); }
+        }
+
+        public int StatusReason
+        {
+            get { return base.GetPropertyValue<int>("statuscode", PropertyType.Status, -1); }
+            set { base.SetPropertyValue<int>("statuscode", PropertyType.Status, value); }
+        }
+
         public bool IsWithinDateTime(DateTime dateTime)
         {
             var after = false;
@@ -209,11 +221,15 @@ namespace InvoiceCalculation.CRM.Model
             return result;
         }
 
-        public DateTime GetInvoicePeriodStartDate(DateTime billingDate, bool isNew)
+        public DateTime GetInvoicePeriodStartDate(DateTime billingDate, bool isNew, InvoiceCalculation.Model.BillingType? optBillingType = null)
         {
             var productType = this.GetProductTypeDetail();
             var isNewOnDate = isNew;
             var billingType = Calculator.GetInvoiceBillingType(productType, this.EffectiveDate, billingDate, isNewOnDate);
+            if (optBillingType != null)
+            {
+                billingType = (InvoiceCalculation.Model.BillingType)optBillingType;
+            }
             var inAdvanced = InvoiceCalculation.Model.BillingType.InAdvanced;
             var inArrears = InvoiceCalculation.Model.BillingType.InArrears;
 
@@ -260,11 +276,15 @@ namespace InvoiceCalculation.CRM.Model
             return result;
         }
 
-        public DateTime GetInvoicePeriodEndDate(DateTime billingDate, bool isNew)
+        public DateTime GetInvoicePeriodEndDate(DateTime billingDate, bool isNew, InvoiceCalculation.Model.BillingType? optBillingType = null)
         {
             var productType = this.GetProductTypeDetail();
             var isNewOnDate = isNew;
             var billingType = Calculator.GetInvoiceBillingType(productType, this.EffectiveDate, billingDate, isNewOnDate);
+            if (optBillingType != null)
+            {
+                billingType = (InvoiceCalculation.Model.BillingType)optBillingType;
+            }
             var inAdvanced = InvoiceCalculation.Model.BillingType.InAdvanced;
             var inArrears = InvoiceCalculation.Model.BillingType.InArrears;
 
@@ -303,7 +323,7 @@ namespace InvoiceCalculation.CRM.Model
                 result = lastDayOfYear;
             }
 
-            if (result > this.ContractTerminationDate)
+            if (result > this.ContractTerminationDate && billingType == InvoiceCalculation.Model.BillingType.InArrears)
             {
                 result = this.ContractTerminationDate;
             }

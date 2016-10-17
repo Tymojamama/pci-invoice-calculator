@@ -9,25 +9,33 @@ namespace InvoiceCalculation
 {
     public class Generator
     {
-        private List<CRM.Model.Account> _accounts;
-        private List<CRM.Model.Engagement> _engagements;
-        private List<CRM.Model.PlanAccount> _planAccounts;
-        private List<CRM.Model.PlanEngagement> _planEngagements;
-        private List<CRM.Model.PlanAsset> _planAssets;
+        public readonly List<CRM.Model.Account> Accounts;
+        public readonly List<CRM.Model.Engagement> Engagements;
+        public readonly List<CRM.Model.PlanAccount> PlanAccounts;
+        public readonly List<CRM.Model.PlanEngagement> PlanEngagements;
+        public readonly List<CRM.Model.PlanAsset> PlanAssets;
         private List<Model.Invoice> _generatedInvoices;
 
         public DateTime BillingDate;
+        private string _billingFrequency;
 
         public Generator(DateTime billingDate)
         {
-            Console.WriteLine("Fetching plan and engagement data from CRM");
             this.BillingDate = DateTime.SpecifyKind(billingDate, DateTimeKind.Utc);
-            this._accounts = CRM.Data.Account.Retrieve();
-            this._engagements = CRM.Data.Engagement.Retrieve()
-                .FindAll(x => x.IsWithinDateTime(this.BillingDate));
-            this._planAccounts = CRM.Data.PlanAccount.Retrieve();
-            this._planEngagements = CRM.Data.PlanEngagement.Retrieve();
-            this._planAssets = CRM.Data.PlanAsset.Retrieve();
+            if (!this._isValidBillingDate())
+            {
+                return;
+            }
+
+            Console.WriteLine("Fetching plan and engagement data from CRM");
+            this.Accounts = CRM.Data.Account.Retrieve();
+            this.Engagements = CRM.Data.Engagement.Retrieve()
+                .FindAll(x => x.IsWithinDateTime(this.BillingDate))
+                .FindAll(x => x.ProductType != -1);
+            this.Engagements = this._filterEngagementsByBillingFrequency();
+            this.PlanAccounts = CRM.Data.PlanAccount.Retrieve();
+            this.PlanEngagements = CRM.Data.PlanEngagement.Retrieve();
+            this.PlanAssets = CRM.Data.PlanAsset.Retrieve();
         }
 
         /// <summary>
@@ -35,118 +43,78 @@ namespace InvoiceCalculation
         /// </summary>
         public void Run()
         {
+            if (String.IsNullOrWhiteSpace(this._billingFrequency))
+            {
+                return;
+            }
+
             Console.WriteLine("Calculating invoices");
             this._calculateInvoices();
-            Console.WriteLine("Calculation line items");
+            Console.WriteLine("Calculating line items");
             this._calculateLineItems();
             Console.WriteLine("Creating and updating invoice records");
             this._createInvoiceRecordsInCrm();
             Console.WriteLine("Process complete");
         }
 
+        public List<Model.Invoice> CalculateInvoice(Guid engagementId)
+        {
+            var engagement = this.Engagements.Find(x => x.Id == engagementId);
+            var generatorInvoiceInstance = new GeneratorInvoice(engagement, this);
+            return generatorInvoiceInstance.GetInvoices();
+        }
+
+        private List<CRM.Model.Engagement> _filterEngagementsByBillingFrequency()
+        {
+            if (this._billingFrequency == "Quarterly")
+            {
+                return this.Engagements
+                    .FindAll(x => x.GetProductTypeDetail().BillingFrequency == "Monthly" || x.GetProductTypeDetail().BillingFrequency == "Quarterly");
+            }
+            else
+            {
+                return this.Engagements
+                    .FindAll(x => x.GetProductTypeDetail().BillingFrequency == this._billingFrequency);
+            }
+        }
+
+        private bool _isValidBillingDate()
+        {
+            var firstDayOfMonth = new DateTime(this.BillingDate.Year, this.BillingDate.Month, 1);
+            var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+            var billingDateQuarter = (this.BillingDate.Month - 1) / 3 + 1;
+            DateTime firstDayOfQuarter = new DateTime(this.BillingDate.Year, (billingDateQuarter - 1) * 3 + 1, 1);
+            DateTime lastDayOfQuarter = firstDayOfQuarter.AddMonths(3).AddDays(-1);
+
+            var billingFrequency = "";
+            if (this.BillingDate.Date == lastDayOfQuarter.Date)
+            {
+                billingFrequency = "Quarterly";
+            }
+            else if (this.BillingDate.Date == lastDayOfMonth.Date)
+            {
+                billingFrequency = "Monthly";
+            }
+            else
+            {
+                Console.WriteLine("Unsupported billing date. Please use end of month dates only.");
+                Console.WriteLine("Aborting process.");
+                return false;
+            }
+
+            this._billingFrequency = billingFrequency;
+            return true;
+        }
+
         private void _calculateInvoices()
         {
             this._generatedInvoices = new List<Model.Invoice>();
-            foreach (var engagement in this._engagements.FindAll(x => x.ProductType != -1))
+            foreach (var engagement in this.Engagements)
             {
-                var invoices = CalculateInvoice(engagement);
+                var generatorInvoiceInstance = new GeneratorInvoice(engagement, this);
+                var invoices = generatorInvoiceInstance.GetInvoices();
                 this._generatedInvoices.AddRange(invoices);
             }
-        }
-
-        public List<Model.Invoice> CalculateInvoice(Guid engagementId)
-        {
-            var engagement = this._engagements.Find(x => x.Id == engagementId);
-            return CalculateInvoice(engagement);
-        }
-
-        public List<Model.Invoice> CalculateInvoice(CRM.Model.Engagement engagement)
-        {
-            var result = new List<Model.Invoice>();
-
-            var engagementProductType = engagement.GetProductTypeDetail();
-            var engagementEffectiveDate = (DateTime)engagement.EffectiveDate;
-            var engagementTerminationDate = engagement.ContractTerminationDate;
-            var engagementTierLevel = (int)engagement.Tier;
-            var planAssetValue = engagement.GetAssetsForInvoice(this.BillingDate, this._planEngagements, this._planAccounts, this._planAssets);
-            var isNewEngagement = engagement.IsNewOnBillingDate(this.BillingDate);
-            var isTerminatedEngagement = engagement.IsTerminatedOnBillingDate(this.BillingDate);
-
-            var annualFee = 0m;
-            var invoiceFee = 0m;
-            var invoiceCredit = 0m;
-
-            var erisaVendorProductTypes = new int[] { 2, 5, 8, 11, 13, 14 };
-            if (planAssetValue != 0 || erisaVendorProductTypes.Contains(engagement.ProductType))
-            {
-                annualFee = Calculator.CalculateAnnualFee(engagementProductType, this.BillingDate, engagementEffectiveDate, planAssetValue, engagementTierLevel);
-                invoiceFee = Calculator.CalculateInvoiceFee(annualFee, engagementProductType, this.BillingDate, engagementEffectiveDate, isTerminatedEngagement, isNewEngagement, engagementEffectiveDate);
-                invoiceFee = invoiceFee + engagement.FixedProjectFeeForInvoicePeriod(this.BillingDate, isNewEngagement);
-                invoiceFee = invoiceFee - (engagement.AnnualFeeOffset / 4m);
-                
-                if (isTerminatedEngagement)
-                {
-                    var typicalInvoiceFee = Calculator.CalculateInvoiceFee(annualFee, engagementProductType, this.BillingDate, engagementEffectiveDate, false, isNewEngagement, engagementEffectiveDate);
-                    invoiceCredit = Calculator.CalculateInvoiceCredit(isTerminatedEngagement, typicalInvoiceFee, engagementTerminationDate, engagementProductType);
-                }
-            }
-
-            var invoice = CreateInvoiceFromEngagement(engagement, isNewEngagement);
-            invoice.AnnualFee = annualFee;
-            invoice.InvoiceFee = invoiceFee;
-            invoice.InvoiceCredit = invoiceCredit;
-            invoice.TotalPlanAssetsUsed = planAssetValue;
-            invoice.BillingType = Calculator.GetInvoiceBillingType(engagementProductType, engagementEffectiveDate, this.BillingDate, isNewEngagement);
-
-            if (invoice.BillingType == Model.BillingType.InArrears && isTerminatedEngagement)
-            {
-                var typicalInvoiceFee = Calculator.CalculateInvoiceFee(annualFee, engagementProductType, this.BillingDate, engagementEffectiveDate, false, isNewEngagement, engagementEffectiveDate);
-                invoiceCredit = Calculator.CalculateInvoiceCredit(isTerminatedEngagement, typicalInvoiceFee, engagementTerminationDate, engagementProductType);
-                invoice.InvoiceFee = typicalInvoiceFee - invoiceCredit;
-                invoice.InvoiceCredit = 0;
-            }
-
-            result.Add(invoice);
-
-            // run for next billing period as well
-            if (isNewEngagement && engagementProductType.BillingSchedule == "In Advance")
-            {
-                isNewEngagement = false;
-                var newInvoice = CreateInvoiceFromEngagement(engagement, isNewEngagement);
-                newInvoice.TotalPlanAssetsUsed = planAssetValue;
-                newInvoice.BillingType = Calculator.GetInvoiceBillingType(engagementProductType, engagementEffectiveDate, this.BillingDate, isNewEngagement);
-                if (planAssetValue != 0 || erisaVendorProductTypes.Contains(engagement.ProductType))
-                {
-                    newInvoice.AnnualFee = Calculator.CalculateAnnualFee(engagementProductType, this.BillingDate, engagementEffectiveDate, planAssetValue, engagementTierLevel);
-                    newInvoice.InvoiceFee = Calculator.CalculateInvoiceFee(annualFee, engagementProductType, this.BillingDate, engagementEffectiveDate, isTerminatedEngagement, isNewEngagement, engagementEffectiveDate);
-                    newInvoice.InvoiceFee = newInvoice.InvoiceFee + engagement.FixedProjectFeeForInvoicePeriod(this.BillingDate, isNewEngagement);
-                    newInvoice.InvoiceCredit = Calculator.CalculateInvoiceCredit(isTerminatedEngagement, invoiceFee, engagementTerminationDate, engagementProductType);
-                }
-
-                result.Add(newInvoice);
-            }
-
-            if (isTerminatedEngagement)
-            {
-
-            }
-
-            return result;
-        }
-
-        private Model.Invoice CreateInvoiceFromEngagement(CRM.Model.Engagement engagement, bool isNew)
-        {
-            var invoice = new Model.Invoice();
-            invoice.Name = this.BillingDate.ToString("MM/dd/yyyy") + " invoice for " + engagement.Name;
-            invoice.BilledOn = this.BillingDate.AddHours(12);
-            invoice.StartDate = DateTime.SpecifyKind(engagement.GetInvoicePeriodStartDate(this.BillingDate, isNew), DateTimeKind.Utc).AddHours(12);
-            invoice.EndDate = DateTime.SpecifyKind(engagement.GetInvoicePeriodEndDate(this.BillingDate, isNew), DateTimeKind.Utc).AddHours(12);
-            invoice.EarnedOn = invoice.EndDate;
-            invoice.DaysToPay = engagement.GetDaysToPay();
-            invoice.GeneralLedgerAccountId = engagement.GetGeneralLedgerAccountId();
-            invoice.EngagementId = engagement.Id;
-            invoice.ClientId = engagement.ClientId;
-            return invoice;
         }
 
         private void _calculateLineItems()
@@ -158,14 +126,16 @@ namespace InvoiceCalculation
             {
                 var clientName = row["ClientName"].ToString();
                 var taskName = row["TaskName"].ToString();
-                var engagement = this._engagements.Find(x => x.Name == clientName);
+                var engagement = this.Engagements.Find(x => x.Name == clientName);
 
                 if (engagement == null)
                 {
                     continue;
                 }
 
-                var invoices = this._generatedInvoices.FindAll(x => x.EngagementId == engagement.Id);
+                var invoices = this._generatedInvoices
+                    .FindAll(x => x.EngagementId == engagement.Id)
+                    .FindAll(x => x.IsMainInvoice == true);
                 var single = invoiceMaster.RunSingle(clientName, taskName, beginningOfYear);
                 foreach (var invoice in invoices)
                 {
@@ -181,7 +151,11 @@ namespace InvoiceCalculation
                         // i need make in advanced billing pull amounts from previous quarter
                         if (invoice.BillingType == Model.BillingType.InAdvanced)
                         {
-                            if (startTime >= invoice.StartDate.AddMonths(-3) && startTime < invoice.EndDate.AddMonths(-3))
+                            var range = (invoice.EndDate - invoice.StartDate).TotalDays - 3;
+                            var billingStartDate = invoice.StartDate.AddDays(range * -1);
+                            billingStartDate = new DateTime(billingStartDate.Year, billingStartDate.Month, 1);
+                            var billingEndDate = invoice.StartDate.Date.AddSeconds(-1);
+                            if (startTime >= billingStartDate && startTime < billingEndDate)
                             {
                                 lineItem.Amount = lineItem.Amount + billableAmount;
                             }
@@ -227,7 +201,10 @@ namespace InvoiceCalculation
 
                 var crmInvoice = new CRM.Model.Invoice(invoice);
 
-                var currentInvoice = currentInvoices.Find(x => x.EngagementId == invoice.EngagementId && x.BillingType == (int)invoice.BillingType);
+                var currentInvoice = currentInvoices
+                    .FindAll(x => x.EngagementId == invoice.EngagementId)
+                    .Find(x => x.BillingType == (int)invoice.BillingType);
+
                 if (invoice.InvoiceFee + invoice.InvoiceCredit == 0)
                 {
                     continue;

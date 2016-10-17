@@ -28,11 +28,12 @@ namespace InvoiceCalculation.Model
         public Guid EngagementId;
         public Guid ClientId;
         public Guid GeneralLedgerAccountId;
+        public bool IsMainInvoice;
         public List<InvoiceLineItem> LineItems = new List<InvoiceLineItem>();
 
         public Invoice()
         {
-
+            this.IsMainInvoice = false;
         }
     }
 }

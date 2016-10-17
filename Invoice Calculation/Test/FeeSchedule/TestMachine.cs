@@ -7,7 +7,7 @@ using Microsoft.VisualBasic.FileIO;
 using Data = InvoiceCalculation.Data;
 using Model = InvoiceCalculation.Model;
 
-namespace InvoiceCalculation.Test
+namespace InvoiceCalculation.Test.FeeSchedule
 {
     public static class TestMachine
     {
@@ -15,7 +15,7 @@ namespace InvoiceCalculation.Test
         {
             var result = true;
 
-            Console.WriteLine("Unit test begin");
+            Console.WriteLine("Fee schedule unit test begin");
 
             var unitTestSuccesses = new List<UnitTest>();
             var unitTestFailures = new List<UnitTest>();
@@ -64,11 +64,11 @@ namespace InvoiceCalculation.Test
 
             if (unitTestFailures.Count() == 0)
             {
-                Console.WriteLine("Unit test end: SUCCESS");
+                Console.WriteLine("Fee schedule unit test end: SUCCESS");
             }
             else
             {
-                Console.WriteLine("Unit test end: FAILURE");
+                Console.WriteLine("Fee schedule unit test end: FAILURE");
                 Console.WriteLine("Successful unit tests: " + unitTestSuccesses.Count().ToString());
                 Console.WriteLine("Failed unit tests: " + unitTestFailures.Count().ToString());
             }

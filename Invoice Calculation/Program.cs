@@ -9,52 +9,6 @@ using SdkTypeProxy = Microsoft.Crm.SdkTypeProxy;
 using Data = InvoiceCalculation.Data;
 using Model = InvoiceCalculation.Model;
 
-/*
- * :::To Do:::
- * QuickBooks Developer - Invoice Import
- * Finish engagement general ledger account method
- * Required fields for invoice entity: billing type, billed on
- * 
- * :::To Do Later:::
- * Add audit history to plan asset history entity and invoice entity
- * Vendor monitoring termination invoice fee/invoice credit
- * Splitting revenue for isserviceongoing, istiered engagement that replace another isserviceongoing, istiered engagement
- * 
- * :::Complete:::
- * Invoice Term (30 days to pay default, 90 days for particular clients)
- * Engagement contract termination date
- * Engagement annual fee offset
- * Choose fee schedule based on engagement contract start date
- *   - If start date is within range of multiple fee schedules,
- *     choose the mose recently added fee schedule.
- * Special termination process
- *   - If billing in advance, create credit line item
- *   - If billing in advance, don't calculate the fee within billing start date
- *     and termination date
- * Special in arrears new contract process
- *   - If new contract, engagement product type in advance, and first quarter,
- *     then calculate fee for percentage of first quarter completed
- * Fee Schedule Start/End Dates
- *    - Billing date must be in start date/end date range
- * Match .csv file product type id's to CRM product type id's
- * Add new product types for Core Complete & Investment Complete -> match 3(21)
- * New engagement in advanced (or billing type change) -> 2 invoices
- * Billing type history (in advanced/in arrears) - move from engagement/product type to fee schedule data
- * 
- * :::Schedule:::
- * ☑ Calculator Buildout - 3 hours remaining
- * ☑ CRM Buildout - 2 hours
- * ☑ CRM Integration - 4 hours
- * ☐ Calculator UI/Application Buildout - 6 hours
- * ☐ Invoice Report Buildout - 4 hours
- * ☐ QuickBooks Integration - 8 hours
- * ☐ Testing - 15 hours
- *
- * Zach - 27 hours
- * Katie & Theresa - 15 hours
- * 
- */
-
 namespace InvoiceCalculation
 {
     class Program
@@ -63,25 +17,22 @@ namespace InvoiceCalculation
         {
             CRM.Globals.Initialize();
 
-            // testing
-            args = new string[] { "-g", "03/31/2016" };
-            //args = new string[] { "-t", "-i" };
             
             if (args.Length == 0)
             {
-                RunCalculator();
+                // testing
+                //args = new string[] { "-g", "01/31/2016" };
+                args = new string[] { "-g", "06/30/2016" };
+                //args = new string[] { "-t", "-i" };
             }
-            else if (args[0] == "-t")
-            {
-                RunCalculatorWithTermination();
-            }
+
             // run tests
-            else if (args[0] == "-t" && args.Count() >= 2)
+            if (args[0] == "-t" && args.Count() >= 2)
             {
                 // test calculation
                 if (args[1] == "-c")
                 {
-                    Test.TestMachine.Execute();
+                    Test.FeeSchedule.TestMachine.Execute();
                 }
                 // test invoice generator
                 else if (args[1] == "-i")
@@ -90,11 +41,15 @@ namespace InvoiceCalculation
                     testMachine.Execute();
                 }
             }
-            else if (args[0] == "-n")
+            else if (args[0] == "-t")
             {
-                RunCalculatorWithNew();
+                Test.FeeSchedule.TestMachine.Execute();
+                Console.WriteLine();
+                var testMachine = new Test.Invoice.TestMachine();
+                testMachine.Execute();
             }
-            else if (args[0] == "-g")
+            // calculate and populate all invoices
+            else if (args[0] == "-g" && args.Count() >= 2)
             {
                 RunGenerator(args);
             }
@@ -119,7 +74,7 @@ namespace InvoiceCalculation
                     return;
                 }
 
-                if (Test.TestMachine.Execute())
+                if (Test.FeeSchedule.TestMachine.Execute())
                 {
                     var generator = new Generator(billingDate);
                     generator.Run();
@@ -327,6 +282,9 @@ namespace InvoiceCalculation
                 return invoiceFee;
             }
 
+            // only beginning of day for accuracy
+            terminationDate = terminationDate.Date;
+
             var beginningOfQuarter1 = DateTime.Parse("01/01/" + terminationDate.Year.ToString());
             var endingOfQuarter1 = DateTime.Parse("03/31/" + terminationDate.Year.ToString());
             var beginningOfQuarter2 = DateTime.Parse("04/01/" + terminationDate.Year.ToString());
@@ -378,22 +336,7 @@ namespace InvoiceCalculation
         {
             var invoiceFee = 0m;
 
-            if (productType.ProductTypeId == 11) // vendor search
-            {
-                if ((invoiceDate - startDate).Duration().Days <= 30)
-                {
-                    invoiceFee = annualFee / 2;
-                }
-                else if ((invoiceDate - startDate).Duration().Days < 180 && (invoiceDate - startDate).Duration().Days > 150)
-                {
-                    invoiceFee = annualFee / 2;
-                }
-                else
-                {
-                    invoiceFee = annualFee / 2;
-                }
-            }
-            else if (productType.BillingFrequency == "Quarterly" && productType.BillingLength == "Ongoing")
+            if (productType.BillingFrequency == "Quarterly" && productType.BillingLength == "Ongoing")
             {
                 // add logic here to identify engagements that have started in previous quarter
                 // seperate invoice for beginning engagements that are in advance and started previous quarter

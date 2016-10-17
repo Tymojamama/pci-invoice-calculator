@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Data = InvoiceCalculation.Data;
 using Models = InvoiceCalculation.Model;
 
-namespace InvoiceCalculation.Test
+namespace InvoiceCalculation.Test.FeeSchedule
 {
     public enum UnitTestType
     {
