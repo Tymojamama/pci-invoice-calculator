@@ -142,10 +142,11 @@ namespace InvoiceCalculation
                     var lineItem = new Model.InvoiceLineItem();
                     foreach (DataRow row2 in single.Rows)
                     {
+                        var billableHours = decimal.Parse(row2["BillableHours"].ToString());
                         var billableAmount = decimal.Parse(row2["BillableAmount"].ToString());
                         var startTime = DateTime.Parse(row2["StartTime"].ToString());
 
-                        lineItem.Name = taskName + " Additional Billable Amount";
+                        lineItem.Name = taskName;
                         lineItem.LineItemType = Model.LineItemType.Fee;
 
                         // i need make in advanced billing pull amounts from previous quarter
@@ -155,10 +156,23 @@ namespace InvoiceCalculation
                             var billingStartDate = invoice.StartDate.AddDays(range * -1);
                             billingStartDate = new DateTime(billingStartDate.Year, billingStartDate.Month, 1);
                             var billingEndDate = invoice.StartDate.Date.AddSeconds(-1);
+
                             if (startTime >= billingStartDate && startTime < billingEndDate)
                             {
                                 lineItem.Amount = lineItem.Amount + billableAmount;
+
+                                if (String.IsNullOrWhiteSpace(lineItem.Description))
+                                {
+                                    lineItem.Description = billableHours.ToString("0.00") + " Hours";
+                                }
+                                else
+                                {
+                                    var hours = decimal.Parse(lineItem.Description.Replace(" Hours", ""));
+                                    lineItem.Description = (hours + billableHours).ToString("0.00") + " Hours";
+                                }
                             }
+                            lineItem.StartDate = DateTime.SpecifyKind(billingStartDate, DateTimeKind.Utc).AddHours(12);
+                            lineItem.EndDate = DateTime.SpecifyKind(billingEndDate, DateTimeKind.Utc).AddSeconds(1).AddHours(-12);
                         }
                         else
                         {
@@ -166,6 +180,9 @@ namespace InvoiceCalculation
                             {
                                 lineItem.Amount = lineItem.Amount + billableAmount;
                             }
+
+                            lineItem.StartDate = invoice.StartDate;
+                            lineItem.EndDate = invoice.EndDate;
                         }
                     }
 
@@ -233,8 +250,6 @@ namespace InvoiceCalculation
                 {
                     var crmLineItem = new CRM.Model.InvoiceLineItem(lineItem);
                     crmLineItem.CustomerInvoiceId = crmInvoice.Id;
-                    crmLineItem.StartDate = crmInvoice.StartDate;
-                    crmLineItem.EndDate = crmInvoice.EndDate;
 
                     var matchingLineItem = crmLineItems
                         .FindAll(x => x.LineItemType == crmLineItem.LineItemType)

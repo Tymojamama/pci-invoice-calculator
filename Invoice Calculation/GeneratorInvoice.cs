@@ -34,6 +34,11 @@ namespace InvoiceCalculation
             this._isNewEngagement = engagement.IsNewOnBillingDate(generator.BillingDate);
             this._isTerminatedEngagement = engagement.IsTerminatedOnBillingDate(generator.BillingDate);
 
+            if (this._engagement.Name == "Lexicon Management Group, Inc. 3(21) CC 1601")
+            {
+
+            }
+
             this.calculateInvoiceFeesAndCredits();
         }
 
@@ -42,7 +47,7 @@ namespace InvoiceCalculation
             var result = new List<Model.Invoice>();
 
             var main = this.getInvoiceMain();
-            if (main != null)
+            if (main != null && main.StartDate < this._engagement.ContractTerminationDate)
             {
                 result.Add(main);
             }
@@ -54,7 +59,14 @@ namespace InvoiceCalculation
 
             if (this.isBillingTypeSwitch())
             {
-                result.Add(this.getInvoiceBillingTypeSwitch());
+                if (this._engagementTerminationDate == DateTime.MaxValue)
+                {
+                    result.Add(this.getInvoiceBillingTypeSwitch());
+                }
+                else if (this._engagementTerminationDate >= this.getPreviousBillingDate())
+                {
+                    result.Add(this.getInvoiceBillingTypeSwitch());
+                }
             }
 
             return result;
@@ -63,7 +75,7 @@ namespace InvoiceCalculation
         private Model.Invoice getInvoiceBillingTypeSwitch()
         {
             var previousBillingDate = this.getPreviousBillingDate();
-            var newInvoice = this.getInvoiceMain();
+            var newInvoice = this.getInvoiceMain(Model.BillingType.InArrears);
             newInvoice.IsMainInvoice = false;
             newInvoice.StartDate = DateTime.SpecifyKind(this._engagement.GetInvoicePeriodStartDate(previousBillingDate, this._isNewEngagement, Model.BillingType.InAdvanced), DateTimeKind.Utc).AddHours(12);
             newInvoice.EndDate = DateTime.SpecifyKind(this._engagement.GetInvoicePeriodEndDate(previousBillingDate, this._isNewEngagement, Model.BillingType.InAdvanced), DateTimeKind.Utc).AddHours(12);
@@ -148,6 +160,29 @@ namespace InvoiceCalculation
             invoice.BillingType = Calculator.GetInvoiceBillingType(this._engagementProductType, this._engagementEffectiveDate, this._generator.BillingDate, this._isNewEngagement);
 
             if (invoice.BillingType == Model.BillingType.InArrears && this._isTerminatedEngagement)
+            {
+                invoice = this.modifyForInArrearsTermination(invoice);
+            }
+
+            if (this.isInvalidInvoicePeriodForEngagement(invoice))
+            {
+                return null;
+            }
+
+            return invoice;
+        }
+
+        private Model.Invoice getInvoiceMain(Model.BillingType billingType)
+        {
+            var invoice = this.createInvoiceFromEngagement();
+            invoice.IsMainInvoice = true;
+            invoice.AnnualFee = this._annualFee;
+            invoice.InvoiceFee = this._invoiceFee;
+            invoice.InvoiceCredit = this._invoiceCredit;
+            invoice.TotalPlanAssetsUsed = this._planAssetValue;
+            invoice.BillingType = billingType;
+
+            if (invoice.BillingType == billingType && this._isTerminatedEngagement)
             {
                 invoice = this.modifyForInArrearsTermination(invoice);
             }

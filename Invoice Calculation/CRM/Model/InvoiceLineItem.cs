@@ -16,6 +16,7 @@ namespace InvoiceCalculation.CRM.Model
         {
             this.Id = Guid.Empty;
             this.Name = invoiceLineItem.Name;
+            this.Description = invoiceLineItem.Description;
             this.CustomerInvoiceId = invoiceLineItem.InvoiceId;
             this.GeneralLedgerAccountId = invoiceLineItem.GeneralLedgerAccountId;
             this.QuickbooksTeamClassId = invoiceLineItem.TeamId;
@@ -53,6 +54,12 @@ namespace InvoiceCalculation.CRM.Model
         {
             get { return base.GetPropertyValue<string>("new_name", PropertyType.String, string.Empty); }
             set { base.SetPropertyValue<string>("new_name", PropertyType.String, value); }
+        }
+
+        public string Description
+        {
+            get { return base.GetPropertyValue<string>("new_description", PropertyType.String, string.Empty); }
+            set { base.SetPropertyValue<string>("new_description", PropertyType.String, value); }
         }
 
         public decimal Amount

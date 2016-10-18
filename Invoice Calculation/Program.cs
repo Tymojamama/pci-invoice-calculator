@@ -22,7 +22,7 @@ namespace InvoiceCalculation
             {
                 // testing
                 //args = new string[] { "-g", "01/31/2016" };
-                args = new string[] { "-g", "06/30/2016" };
+                args = new string[] { "-g", "03/31/2016" };
                 //args = new string[] { "-t", "-i" };
             }
 

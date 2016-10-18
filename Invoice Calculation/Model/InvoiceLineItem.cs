@@ -16,6 +16,7 @@ namespace InvoiceCalculation.Model
     {
         public Guid InvoiceId;
         public string Name;
+        public string Description = "";
         public LineItemType LineItemType;
         public decimal Amount;
         public decimal PercentOfInvoice;
