@@ -7,4 +7,3 @@ C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoic
 C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\bin\Debug\PensionConsultants.Data.pdb
 C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\InvoiceCalculation.exe
 C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\InvoiceCalculation.pdb
-C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\InvoiceCalculation.csprojResolveAssemblyReference.cache

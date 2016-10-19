@@ -176,7 +176,7 @@ namespace InvoiceCalculation
                         }
                         else
                         {
-                            if (startTime >= invoice.StartDate && startTime < invoice.EndDate)
+                            if (startTime.Date >= invoice.StartDate.Date && startTime.Date < invoice.EndDate.Date)
                             {
                                 lineItem.Amount = lineItem.Amount + billableAmount;
                             }
@@ -222,7 +222,7 @@ namespace InvoiceCalculation
                     .FindAll(x => x.EngagementId == invoice.EngagementId)
                     .Find(x => x.BillingType == (int)invoice.BillingType);
 
-                if (invoice.InvoiceFee + invoice.InvoiceCredit == 0)
+                if (invoice.InvoiceFee + invoice.InvoiceCredit + invoice.LineItems.Count == 0)
                 {
                     continue;
                 }

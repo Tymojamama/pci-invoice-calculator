@@ -34,22 +34,28 @@ namespace InvoiceCalculation
             this._isNewEngagement = engagement.IsNewOnBillingDate(generator.BillingDate);
             this._isTerminatedEngagement = engagement.IsTerminatedOnBillingDate(generator.BillingDate);
 
-            if (this._engagement.Name == "Lexicon Management Group, Inc. 3(21) CC 1601")
-            {
-
-            }
-
             this.calculateInvoiceFeesAndCredits();
         }
 
         public List<Model.Invoice> GetInvoices()
         {
             var result = new List<Model.Invoice>();
-
+            
             var main = this.getInvoiceMain();
+
+            var termAfter = this._engagementTerminationDate.Date > this.getPreviousBillingDate().Date;
+            var termBefore = this._engagementTerminationDate.Date < this._generator.BillingDate.Date;
+            var termPreviousBillingCycle = termBefore && termAfter;
+            var isInAdvanced = main != null && main.BillingType == Model.BillingType.InAdvanced;
+
             if (main != null && main.StartDate < this._engagement.ContractTerminationDate)
             {
                 result.Add(main);
+            }
+            else if (termPreviousBillingCycle && isInAdvanced)
+            {
+                var previousTermination = this.getInvoiceMain(this.getPreviousBillingDate().Date, Model.BillingType.InArrears);
+                result.Add(previousTermination);
             }
 
             if (this._isNewEngagement && this._engagementProductType.BillingSchedule == "In Advance")
@@ -63,7 +69,7 @@ namespace InvoiceCalculation
                 {
                     result.Add(this.getInvoiceBillingTypeSwitch());
                 }
-                else if (this._engagementTerminationDate >= this.getPreviousBillingDate())
+                else if (this._engagementTerminationDate.Date > this.getPreviousBillingDate().Date)
                 {
                     result.Add(this.getInvoiceBillingTypeSwitch());
                 }
@@ -88,15 +94,21 @@ namespace InvoiceCalculation
         {
             if (this._engagementProductType.BillingFrequency == "Quarterly")
             {
-                return this._generator.BillingDate.AddMonths(-3);
+                var date = this._generator.BillingDate.AddMonths(-3);
+                var daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
+                return new DateTime(date.Year, date.Month, daysInMonth);
             }
             else if (this._engagementProductType.BillingFrequency == "Monthly")
             {
-                return this._generator.BillingDate.AddMonths(-1);
+                var date = this._generator.BillingDate.AddMonths(-1);
+                var daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
+                return new DateTime(date.Year, date.Month, daysInMonth);
             }
             else
             {
-                return this._generator.BillingDate.AddMonths(-12);
+                var date = this._generator.BillingDate.AddMonths(-12);
+                var daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
+                return new DateTime(date.Year, date.Month, daysInMonth);
             }
         }
 
@@ -142,22 +154,77 @@ namespace InvoiceCalculation
 
         private Model.Invoice modifyForInArrearsTermination(Model.Invoice invoice)
         {
+            var terminationDate = this._engagementTerminationDate.Date;
+            if (this._engagementProductType.BillingFrequency == "Quarterly")
+            {
+                var beginQuarterMonths = new int[] { 1, 4, 7, 10 };
+                var endQuarterMonths = new int[] { 3, 6, 9, 12 };
+                var beginingOfMonth = terminationDate.Day == 1;
+                var endOfMonth = terminationDate.Day == DateTime.DaysInMonth(terminationDate.Year,terminationDate.Month);
+
+                if (beginingOfMonth && beginQuarterMonths.Contains(terminationDate.Month) == true)
+                {
+
+                }
+                else if (endOfMonth && endQuarterMonths.Contains(terminationDate.Month) == true)
+                {
+
+                }
+                else
+                {
+                    terminationDate = terminationDate.AddDays(-1);
+                }
+            }
+            else if (this._engagementProductType.BillingFrequency == "Monthly")
+            {
+                var beginingOfMonth = terminationDate.Day == 1;
+                var endOfMonth = terminationDate.Day == DateTime.DaysInMonth(terminationDate.Year, terminationDate.Month);
+
+                if (beginingOfMonth == false && endOfMonth == false)
+                {
+                    terminationDate = terminationDate.AddDays(-1);
+                }
+            }
+            else
+            {
+                if (terminationDate.Day == 1 && terminationDate.Month == 1)
+                {
+
+                }
+                else if (terminationDate.Day == 31 && terminationDate.Month == 12)
+                {
+
+                }
+                else
+                {
+                    terminationDate = terminationDate.AddDays(-1);
+                }
+            }
+
             var typicalInvoiceFee = Calculator.CalculateInvoiceFee(this._annualFee, this._engagementProductType, this._generator.BillingDate, this._engagementEffectiveDate, false, this._isNewEngagement, this._engagementEffectiveDate);
-            var invoiceCredit = Calculator.CalculateInvoiceCredit(this._isTerminatedEngagement, typicalInvoiceFee, this._engagementTerminationDate.AddDays(-1), this._engagementProductType);
+            var invoiceCredit = Calculator.CalculateInvoiceCredit(this._isTerminatedEngagement, typicalInvoiceFee, terminationDate, this._engagementProductType);
             invoice.InvoiceFee = typicalInvoiceFee - invoiceCredit;
             invoice.InvoiceCredit = 0;
             return invoice;
         }
 
-        private Model.Invoice getInvoiceMain()
+        private Model.Invoice getInvoiceMain(DateTime? billingDate = null, Model.BillingType? billingType = null)
         {
-            var invoice = this.createInvoiceFromEngagement();
+            var invoice = this.createInvoiceFromEngagement(billingType);
             invoice.IsMainInvoice = true;
             invoice.AnnualFee = this._annualFee;
             invoice.InvoiceFee = this._invoiceFee;
             invoice.InvoiceCredit = this._invoiceCredit;
             invoice.TotalPlanAssetsUsed = this._planAssetValue;
-            invoice.BillingType = Calculator.GetInvoiceBillingType(this._engagementProductType, this._engagementEffectiveDate, this._generator.BillingDate, this._isNewEngagement);
+
+            if (billingDate == null)
+            {
+                invoice.BillingType = Calculator.GetInvoiceBillingType(this._engagementProductType, this._engagementEffectiveDate, this._generator.BillingDate, this._isNewEngagement);
+            }
+            else
+            {
+                invoice.BillingType = Calculator.GetInvoiceBillingType(this._engagementProductType, this._engagementEffectiveDate, (DateTime)billingDate, this._isNewEngagement);
+            }
 
             if (invoice.BillingType == Model.BillingType.InArrears && this._isTerminatedEngagement)
             {
@@ -258,7 +325,7 @@ namespace InvoiceCalculation
 
         private Model.Invoice getInvoiceNextBillingPeriod()
         {
-            var newInvoice = this.createInvoiceFromEngagement();
+            var newInvoice = this.createInvoiceFromEngagement(Model.BillingType.InAdvanced);
             newInvoice.TotalPlanAssetsUsed = this._planAssetValue;
             newInvoice.BillingType = Calculator.GetInvoiceBillingType(this._engagementProductType, this._engagementEffectiveDate, this._generator.BillingDate, false);
             if (this._planAssetValue != 0 || this.getErisaVendorProducTypes().Contains(this._engagement.ProductType))
@@ -272,13 +339,13 @@ namespace InvoiceCalculation
             return newInvoice;
         }
 
-        private Model.Invoice createInvoiceFromEngagement()
+        private Model.Invoice createInvoiceFromEngagement(Model.BillingType? billingType = null)
         {
             var invoice = new Model.Invoice();
             invoice.Name = this._generator.BillingDate.ToString("MM/dd/yyyy") + " invoice for " + this._engagement.Name;
             invoice.BilledOn = this._generator.BillingDate.AddHours(12);
-            invoice.StartDate = DateTime.SpecifyKind(this._engagement.GetInvoicePeriodStartDate(this._generator.BillingDate, this._isNewEngagement), DateTimeKind.Utc).AddHours(12);
-            invoice.EndDate = DateTime.SpecifyKind(this._engagement.GetInvoicePeriodEndDate(this._generator.BillingDate, this._isNewEngagement), DateTimeKind.Utc).AddHours(12);
+            invoice.StartDate = DateTime.SpecifyKind(this._engagement.GetInvoicePeriodStartDate(this._generator.BillingDate, this._isNewEngagement, billingType), DateTimeKind.Utc).AddHours(12);
+            invoice.EndDate = DateTime.SpecifyKind(this._engagement.GetInvoicePeriodEndDate(this._generator.BillingDate, this._isNewEngagement, billingType), DateTimeKind.Utc).AddHours(12);
             invoice.EarnedOn = invoice.EndDate;
             invoice.DaysToPay = this._engagement.GetDaysToPay();
             invoice.GeneralLedgerAccountId = this._engagement.GetGeneralLedgerAccountId();
