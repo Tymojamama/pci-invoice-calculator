@@ -56,12 +56,14 @@
     <Compile Include="Calculator.cs" />
     <Compile Include="CRM\Data\Account.cs" />
     <Compile Include="CRM\Data\ComponentTask.cs" />
+    <Compile Include="CRM\Data\GlaInvoiceTeamSplit.cs" />
     <Compile Include="CRM\Data\Invoice.cs" />
     <Compile Include="CRM\Data\InvoiceLineItem.cs" />
     <Compile Include="CRM\Data\PlanAsset.cs" />
     <Compile Include="CRM\Data\PlanEngagement.cs" />
     <Compile Include="CRM\Data\TaskTime.cs" />
     <Compile Include="CRM\Model\ComponentTask.cs" />
+    <Compile Include="CRM\Model\GlaInvoiceTeamSplit.cs" />
     <Compile Include="CRM\Model\Invoice.cs" />
     <Compile Include="CRM\Model\InvoiceLineItem.cs" />
     <Compile Include="CRM\Model\PlanAsset.cs" />

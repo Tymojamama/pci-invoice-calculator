@@ -14,6 +14,7 @@ namespace InvoiceCalculation
         public readonly List<CRM.Model.PlanAccount> PlanAccounts;
         public readonly List<CRM.Model.PlanEngagement> PlanEngagements;
         public readonly List<CRM.Model.PlanAsset> PlanAssets;
+        public readonly List<CRM.Model.GlaInvoiceTeamSplit> GlaInvoiceTeamSplits;
         private List<Model.Invoice> _generatedInvoices;
 
         public DateTime BillingDate;
@@ -36,6 +37,7 @@ namespace InvoiceCalculation
             this.PlanAccounts = CRM.Data.PlanAccount.Retrieve();
             this.PlanEngagements = CRM.Data.PlanEngagement.Retrieve();
             this.PlanAssets = CRM.Data.PlanAsset.Retrieve();
+            this.GlaInvoiceTeamSplits = CRM.Data.GlaInvoiceTeamSplit.Retrieve();
         }
 
         /// <summary>
@@ -207,61 +209,101 @@ namespace InvoiceCalculation
             }
         }
 
+        private void _createInvoiceRecordInCrm(Model.Invoice invoice, List<CRM.Model.Invoice> currentInvoices)
+        {
+            // insert invoice record into crm with invoice credit line item if applicable
+            // update invoice record if it already exists, don't update if statusreason is locked
+            // if invoice fee is 0 and invoice credit is 0, don't create invoice
+            var crmInvoice = new CRM.Model.Invoice(invoice);
+
+            var currentInvoice = currentInvoices
+                .FindAll(x => x.EngagementId == invoice.EngagementId)
+                .Find(x => x.BillingType == (int)invoice.BillingType);
+
+            if (invoice.InvoiceFee + invoice.InvoiceCredit + invoice.LineItems.Count == 0)
+            {
+                return;
+            }
+            else if (currentInvoice != null && currentInvoice.StatusReason == 100000000)
+            {
+                return;
+            }
+            else if (currentInvoice != null)
+            {
+                crmInvoice.Id = currentInvoice.Id;
+            }
+
+            var isNew = false;
+            if (crmInvoice.Id == Guid.Empty)
+            {
+                isNew = true;
+                crmInvoice.Id = Guid.NewGuid();
+            }
+
+            CRM.Data.Invoice.Save(crmInvoice, isNew);
+
+            this._createInvoiceLineItemRecordsInCrm(crmInvoice, invoice);
+            this._createGlaInvoiceTeamSplitRecordsInCrm(crmInvoice, invoice);
+        }
+
+        private void _createInvoiceLineItemRecordsInCrm(CRM.Model.Invoice crmInvoice, Model.Invoice invoice)
+        {
+            var crmLineItems = CRM.Data.InvoiceLineItem.Retrieve(crmInvoice);
+
+            foreach (var lineItem in invoice.LineItems)
+            {
+                var crmLineItem = new CRM.Model.InvoiceLineItem(lineItem);
+                crmLineItem.CustomerInvoiceId = crmInvoice.Id;
+
+                var matchingLineItem = crmLineItems
+                    .FindAll(x => x.LineItemType == crmLineItem.LineItemType)
+                    .Find(x => x.Name == crmLineItem.Name);
+
+                if (matchingLineItem != null)
+                {
+                    crmLineItem.Id = matchingLineItem.Id;
+                }
+
+                CRM.Data.InvoiceLineItem.Save(crmLineItem);
+            }
+            
+        }
+
+        private void _createGlaInvoiceTeamSplitRecordsInCrm(CRM.Model.Invoice crmInvoice, Model.Invoice invoice)
+        {
+            var engagement = this.Engagements.Find(x => x.Id == crmInvoice.EngagementId);
+            var splits = this.GlaInvoiceTeamSplits
+                .FindAll(x => x.AccountId == engagement.ClientId)
+                .FindAll(x => x.ProductType == engagement.ProductType)
+                .FindAll(x => x.StartDate <= crmInvoice.StartDate)
+                .FindAll(x => x.EndDate >= crmInvoice.EndDate);
+
+            foreach (var split in splits)
+            {
+                var crmSplit = this.GlaInvoiceTeamSplits
+                    .FindAll(x => x.InvoiceId == crmInvoice.Id)
+                    .FindAll(x => x.GeneralLedgerAccountId == split.GeneralLedgerAccountId)
+                    .Find(x => x.StartDate.Date == split.StartDate.Date);
+
+                var isNew = true;
+                if (crmSplit != null)
+                {
+                    split.Id = crmSplit.Id;
+                    isNew = false;
+                }
+
+                split.InvoiceId = crmInvoice.Id;
+                split.AccountId = Guid.Empty;
+                CRM.Data.GlaInvoiceTeamSplit.Save(split, isNew);
+            }
+        }
+
         private void _createInvoiceRecordsInCrm()
         {
             var currentInvoices = CRM.Data.Invoice.Retrieve(this.BillingDate.AddHours(12));
             foreach (var invoice in this._generatedInvoices)
             {
-                // insert invoice record into crm with invoice credit line item if applicable
-                // update invoice record if it already exists, don't update if statusreason is locked
-                // if invoice fee is 0 and invoice credit is 0, don't create invoice
-
-                var crmInvoice = new CRM.Model.Invoice(invoice);
-
-                var currentInvoice = currentInvoices
-                    .FindAll(x => x.EngagementId == invoice.EngagementId)
-                    .Find(x => x.BillingType == (int)invoice.BillingType);
-
-                if (invoice.InvoiceFee + invoice.InvoiceCredit + invoice.LineItems.Count == 0)
-                {
-                    continue;
-                }
-                else if (currentInvoice != null && currentInvoice.StatusReason == 100000000)
-                {
-                    continue;
-                }
-                else if (currentInvoice != null)
-                {
-                    crmInvoice.Id = currentInvoice.Id;
-                }
-
-                var isNew = false;
-                if (crmInvoice.Id == Guid.Empty)
-                {
-                    isNew = true;
-                    crmInvoice.Id = Guid.NewGuid();
-                }
-
-                CRM.Data.Invoice.Save(crmInvoice, isNew);
-
-                var crmLineItems = CRM.Data.InvoiceLineItem.Retrieve(crmInvoice);
-
-                foreach (var lineItem in invoice.LineItems)
-                {
-                    var crmLineItem = new CRM.Model.InvoiceLineItem(lineItem);
-                    crmLineItem.CustomerInvoiceId = crmInvoice.Id;
-
-                    var matchingLineItem = crmLineItems
-                        .FindAll(x => x.LineItemType == crmLineItem.LineItemType)
-                        .Find(x => x.Name == crmLineItem.Name);
-
-                    if (matchingLineItem != null)
-                    {
-                        crmLineItem.Id = matchingLineItem.Id;
-                    }
-
-                    CRM.Data.InvoiceLineItem.Save(crmLineItem);
-                }
+                this._createInvoiceRecordInCrm(invoice, currentInvoices);
             }
         }
     }
