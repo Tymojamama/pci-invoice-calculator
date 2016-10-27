@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace InvoiceCalculation
@@ -341,8 +342,17 @@ namespace InvoiceCalculation
 
         private Model.Invoice createInvoiceFromEngagement(Model.BillingType? billingType = null)
         {
+            Regex rgx = new Regex("[^a-zA-Z0-9 -]");
+            var name = this._engagement.Name;
+            name = rgx.Replace(name, "");
+            name = Regex.Replace(name, @"[\d-]", "");
+            name = Regex.Replace(name, @"\s+", "");
+            name = name.Substring(0, 3).ToUpper();
+            name = name + this._engagement.ClientId.ToString().Substring(0, 3).ToUpper();
+            name = name + this._generator.BillingDate.ToString("yy") + this._generator.BillingDate.ToString("MM");
+            
             var invoice = new Model.Invoice();
-            invoice.Name = this._generator.BillingDate.ToString("MM/dd/yyyy") + " invoice for " + this._engagement.Name;
+            invoice.Name = name;
             invoice.BilledOn = this._generator.BillingDate.AddHours(12);
             invoice.StartDate = DateTime.SpecifyKind(this._engagement.GetInvoicePeriodStartDate(this._generator.BillingDate, this._isNewEngagement, billingType), DateTimeKind.Utc).AddHours(12);
             invoice.EndDate = DateTime.SpecifyKind(this._engagement.GetInvoicePeriodEndDate(this._generator.BillingDate, this._isNewEngagement, billingType), DateTimeKind.Utc).AddHours(12);

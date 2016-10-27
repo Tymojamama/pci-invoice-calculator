@@ -292,6 +292,16 @@ namespace InvoiceCalculation
                     isNew = false;
                 }
 
+                if (split.StartDate.Date < ((DateTime)crmInvoice.StartDate).Date)
+                {
+                    split.StartDate = (DateTime)crmInvoice.StartDate;
+                }
+
+                if (split.EndDate.Date > ((DateTime)crmInvoice.EndDate).Date)
+                {
+                    split.EndDate = (DateTime)crmInvoice.EndDate;
+                }
+
                 split.InvoiceId = crmInvoice.Id;
                 split.AccountId = Guid.Empty;
                 CRM.Data.GlaInvoiceTeamSplit.Save(split, isNew);
