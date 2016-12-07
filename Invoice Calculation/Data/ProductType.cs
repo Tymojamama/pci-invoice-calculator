@@ -14,7 +14,7 @@ namespace InvoiceCalculation.Data
         {
             var productTypes = new List<Model.ProductType>();
 
-            using (var parser = new TextFieldParser(@"C:\Users\zallen\Desktop\ProductTypes.csv"))
+            using (var parser = new TextFieldParser(@"\\PC03\Operations\2.  operations team\IT\Invoice Solution\Required Files\ProductTypes.csv"))
             {
                 parser.TextFieldType = FieldType.Delimited;
                 parser.SetDelimiters(",");
@@ -31,6 +31,8 @@ namespace InvoiceCalculation.Data
                     productType.BillingFrequency = fields[4];
                     productType.BillingSchedule = fields[5];
                     productType.BillingLength = fields[6];
+                    productType.IsTieredRate = bool.Parse(fields[7]);
+                    productType.IsServiceOngoing = bool.Parse(fields[8]);
                     productTypes.Add(productType);
                 }
             }

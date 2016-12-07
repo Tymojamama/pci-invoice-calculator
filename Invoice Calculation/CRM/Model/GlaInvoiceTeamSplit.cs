@@ -7,10 +7,15 @@ using InvoiceCalculation.CRM.Data;
 
 namespace InvoiceCalculation.CRM.Model
 {
-    public class GlaInvoiceTeamSplit : EntityBase
+    public class GlaInvoiceTeamSplit : EntityBase, ICloneable
     {
         public GlaInvoiceTeamSplit() : base("new_glainvoiceteamsplit") { }
         public GlaInvoiceTeamSplit(DynamicEntity e) : base(e) { }
+
+        public object Clone()
+        {
+            return this.MemberwiseClone();
+        }
 
         public Guid Id
         {
@@ -28,6 +33,12 @@ namespace InvoiceCalculation.CRM.Model
         {
             get { return base.GetPropertyValue<Guid>("new_invoiceid", PropertyType.Lookup, Guid.Empty); }
             set { base.SetPropertyValue<Guid>("new_invoiceid", PropertyType.Lookup, value); }
+        }
+
+        public Guid InvoiceLineItemId
+        {
+            get { return base.GetPropertyValue<Guid>("new_invoicelineitemid", PropertyType.Lookup, Guid.Empty); }
+            set { base.SetPropertyValue<Guid>("new_invoicelineitemid", PropertyType.Lookup, value); }
         }
 
         public Guid EngagementId
@@ -100,6 +111,12 @@ namespace InvoiceCalculation.CRM.Model
         {
             get { return base.GetPropertyValue<bool>("new_usedefaultsplit", PropertyType.Bit, false); }
             set { base.SetPropertyValue<bool>("new_usedefaultsplit", PropertyType.Bit, value); }
+        }
+
+        public decimal TotalSplit
+        {
+            get { return base.GetPropertyValue<decimal>("new_percentsplit", PropertyType.Decimal, 0m); }
+            set { base.SetPropertyValue<decimal>("new_percentsplit", PropertyType.Decimal, value); }
         }
 
         public decimal Split1

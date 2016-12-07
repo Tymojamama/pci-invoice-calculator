@@ -22,7 +22,9 @@ namespace InvoiceCalculation.Model
         public decimal PercentOfInvoice;
         public DateTime StartDate;
         public DateTime EndDate;
+        public DateTime? ApprovedOn;
         public Guid GeneralLedgerAccountId;
         public Guid TeamId;
+        public bool IsWorkplace;
     }
 }

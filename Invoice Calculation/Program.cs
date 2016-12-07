@@ -17,13 +17,28 @@ namespace InvoiceCalculation
         {
             CRM.Globals.Initialize();
 
-            
             if (args.Length == 0)
             {
-                // testing
-                //args = new string[] { "-g", "01/31/2016" };
-                args = new string[] { "-g", "09/30/2016" };
-                //args = new string[] { "-t", "-i" };
+                Console.WriteLine("Welcome to the Pension Consultants, Inc. Invoicing Solution");
+                Console.WriteLine("Type one of the following commands to get started:");
+                Console.WriteLine("  -g   Generate invoices and line items");
+                Console.WriteLine("  -t   Run fee schedule and invoice unit tests");
+
+                var selection = Console.ReadLine();
+                switch (selection)
+                {
+                    case "-g":
+                        var billingDate = RequestDateTime("Please enter billing date");
+                        args = new string[] { "-g", billingDate.ToString("MM/dd/yyyy") };
+                        break;
+                    case "-t":
+                        args = new string[] { "-t" };
+                        break;
+                    default:
+                        Console.WriteLine("Invalid input. Please try again");
+                        Main(args);
+                        return;
+                }
             }
 
             // run tests
@@ -57,6 +72,9 @@ namespace InvoiceCalculation
             {
                 RunCalculator();
             }
+
+            Console.WriteLine("The program has completed all operations. You may press enter to close this window.");
+            Console.ReadLine();
         }
 
         public static void RunGenerator(string[] args)
@@ -320,7 +338,8 @@ namespace InvoiceCalculation
             }
 
             // 1 subtracted to numerator to pick up full day of billing on termination
-            credit = invoiceFee * (decimal)((remainingDays - 1d) / totalDays);
+            //credit = invoiceFee * (decimal)((remainingDays - 1d) / totalDays);
+            credit = invoiceFee * (decimal)((remainingDays) / totalDays);
 
             return credit;
         }

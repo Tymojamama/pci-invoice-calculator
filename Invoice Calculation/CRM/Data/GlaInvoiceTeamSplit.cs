@@ -32,6 +32,26 @@ namespace InvoiceCalculation.CRM.Data
             return result;
         }
 
+        public static List<Model.GlaInvoiceTeamSplit> Retrieve(DateTime dateTime)
+        {
+            var criteria = new FilterExpression();
+            criteria.AddCondition("new_startdate", ConditionOperator.Equal, dateTime);
+
+            var request = Globals.GetRetrieveMultipleRequest(_tableName, criteria);
+            var retrieveMultipleResponse = Globals.CrmServiceBroker.ExecuteRetrieveMultipleRequest(request);
+            var businessEntityCollection = retrieveMultipleResponse.BusinessEntityCollection;
+
+            var result = new List<Model.GlaInvoiceTeamSplit>();
+            foreach (var businessEntity in businessEntityCollection.BusinessEntities)
+            {
+                var dynamicEntity = (DynamicEntity)businessEntity;
+                var split = new CRM.Model.GlaInvoiceTeamSplit(dynamicEntity);
+                result.Add(split);
+            }
+
+            return result;
+        }
+
         public static Model.GlaInvoiceTeamSplit Retrieve(Guid id)
         {
             var criteria = new FilterExpression();

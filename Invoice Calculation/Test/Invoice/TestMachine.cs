@@ -104,11 +104,16 @@ namespace InvoiceCalculation.Test.Invoice
                 generators.Add(generator);
             }
 
+            if (unitTest.EngagementId == new Guid("{73e63a54-9ab5-e511-9429-00155d288102}"))
+            {
+
+            }
+
             var invoices = generator.CalculateInvoice(unitTest.EngagementId);
             var invoice = invoices.Find(x => (int)x.BillingType == unitTest.BillingType);
 
             if (invoice == null)
-            {
+           {
                 Console.WriteLine("Billing type is incorrect.");
                 return false;
             }
@@ -181,7 +186,7 @@ namespace InvoiceCalculation.Test.Invoice
         {
             var result = new List<UnitTest>();
 
-            using (var parser = new TextFieldParser(@"C:\Users\zallen\Desktop\InvoiceUnitTests.csv"))
+            using (var parser = new TextFieldParser(@"\\PC03\Operations\2.  operations team\IT\Invoice Solution\Required Files\InvoiceUnitTests.csv"))
             {
                 parser.TextFieldType = FieldType.Delimited;
                 parser.SetDelimiters(",");

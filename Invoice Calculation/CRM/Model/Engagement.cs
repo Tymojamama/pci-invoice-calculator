@@ -108,6 +108,8 @@ namespace InvoiceCalculation.CRM.Model
             set { base.SetPropertyValue<int>("statuscode", PropertyType.Status, value); }
         }
 
+        public bool HasParentEngagement = false;
+
         public bool IsWithinDateTime(DateTime dateTime)
         {
             var after = false;
@@ -151,7 +153,7 @@ namespace InvoiceCalculation.CRM.Model
         ///     (3)  If in arrears, grab latest asset value before/equal to invoice period end date.
         ///     (4)  Plan asset value as of date greater than or equal to beginning of billed on date quarter.
         /// </remarks>
-        public decimal GetAssetsForInvoice(DateTime billingDate, List<PlanEngagement> planEngagements, List<PlanAccount> plans, List<PlanAsset> planAssets)
+        public decimal GetAssetsForInvoice(DateTime billingDate, List<PlanEngagement> planEngagements, List<PlanAccount> plans, List<PlanAsset> planAssets, DateTime invoiceStartDate)
         {
             var result = 0m;
 
@@ -162,9 +164,16 @@ namespace InvoiceCalculation.CRM.Model
             }
 
             planEngagements = planEngagements.FindAll(x => x.EngagementId == this.Id);
+
             foreach (var planEngagement in planEngagements)
             {
                 var plan = plans.Find(x => x.Id == planEngagement.PlanId);
+
+                if (plan.TerminationDate < invoiceStartDate)
+                {
+                    continue;
+                }
+
                 var assets = planAssets.FindAll(x => x.PlanId == plan.Id);
                 assets = assets.FindAll(x => x.AssetValueAsOf <= billingDate.AddDays(1) && x.AssetValueAsOf >= billingDate.AddMonths(-3));
                 assets = assets.OrderByDescending(x => x.AssetValueAsOf).ToList();
@@ -221,40 +230,48 @@ namespace InvoiceCalculation.CRM.Model
             return result;
         }
 
-        public DateTime GetInvoicePeriodStartDate(DateTime billingDate, bool isNew, InvoiceCalculation.Model.BillingType? optBillingType = null)
+        public DateTime GetInvoicePeriodStartDate(DateTime billingDate, bool isNew, InvoiceCalculation.Model.BillingType? optBillingType = null, string optBillingFrequency = "")
         {
             var productType = this.GetProductTypeDetail();
             var isNewOnDate = isNew;
+            var billingFrequency = productType.BillingFrequency;
             var billingType = Calculator.GetInvoiceBillingType(productType, this.EffectiveDate, billingDate, isNewOnDate);
+
             if (optBillingType != null)
             {
                 billingType = (InvoiceCalculation.Model.BillingType)optBillingType;
             }
+
+            if (optBillingFrequency != "")
+            {
+                billingFrequency = optBillingFrequency.ToString();
+            }
+
             var inAdvanced = InvoiceCalculation.Model.BillingType.InAdvanced;
             var inArrears = InvoiceCalculation.Model.BillingType.InArrears;
 
             DateTime result;
 
-            if (productType.BillingFrequency == "Monthly" && billingType == inAdvanced)
+            if (billingFrequency == "Monthly" && billingType == inAdvanced)
             {
                 var firstDayOfMonth = new DateTime(billingDate.Year, billingDate.Month, 1);
                 var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
                 result = firstDayOfMonth.AddMonths(1);
             }
-            else if (productType.BillingFrequency == "Monthly" && billingType == inArrears)
+            else if (billingFrequency == "Monthly" && billingType == inArrears)
             {
                 var firstDayOfMonth = new DateTime(billingDate.Year, billingDate.Month, 1);
                 var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
                 result = firstDayOfMonth;
             }
-            else if (productType.BillingFrequency == "Quarterly" && billingType == inAdvanced)
+            else if (billingFrequency == "Quarterly" && billingType == inAdvanced)
             {
                 var billingDateQuarter = (billingDate.Month - 1) / 3 + 1;
                 DateTime firstDayOfQuarter = new DateTime(billingDate.Year, (billingDateQuarter - 1) * 3 + 1, 1);
                 DateTime lastDayOfQuarter = firstDayOfQuarter.AddMonths(3).AddDays(-1);
                 result = firstDayOfQuarter.AddMonths(3);
             }
-            else if (productType.BillingFrequency == "Quarterly" && billingType == inArrears)
+            else if (billingFrequency == "Quarterly" && billingType == inArrears)
             {
                 var billingDateQuarter = (billingDate.Month - 1) / 3 + 1;
                 DateTime firstDayOfQuarter = new DateTime(billingDate.Year, (billingDateQuarter - 1) * 3 + 1, 1);
@@ -307,7 +324,7 @@ namespace InvoiceCalculation.CRM.Model
                 var billingDateQuarter = (billingDate.Month - 1) / 3 + 1;
                 DateTime firstDayOfQuarter = new DateTime(billingDate.Year, (billingDateQuarter - 1) * 3 + 1, 1);
                 DateTime lastDayOfQuarter = firstDayOfQuarter.AddMonths(3).AddDays(-1);
-                result = lastDayOfQuarter.AddMonths(3);
+                result = lastDayOfQuarter.AddDays(1).AddMonths(3).AddDays(-1);
             }
             else if (productType.BillingFrequency == "Quarterly" && billingType == inArrears)
             {
@@ -350,6 +367,25 @@ namespace InvoiceCalculation.CRM.Model
             if (this._finalProjectTaskCompletedWithinInvoicePeriod(billingDate, isNew))
             {
                 result = this.FixedProjectFee;
+            }
+
+            return result;
+        }
+
+        public bool IsOngoingEngagement()
+        {
+            var productType = this.GetProductTypeDetail();
+            return productType.IsServiceOngoing;
+        }
+
+        public bool IsTieredOngoingEngagement()
+        {
+            var result = false;
+
+            var productType = this.GetProductTypeDetail();
+            if (productType.IsTieredRate && productType.IsServiceOngoing)
+            {
+                result = true;
             }
 
             return result;

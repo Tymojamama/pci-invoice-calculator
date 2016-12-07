@@ -14,7 +14,11 @@ namespace InvoiceCalculation
         public readonly List<CRM.Model.PlanAccount> PlanAccounts;
         public readonly List<CRM.Model.PlanEngagement> PlanEngagements;
         public readonly List<CRM.Model.PlanAsset> PlanAssets;
+        public readonly List<CRM.Model.GeneralLedgerAccount> GeneralLedgerAccounts;
         public readonly List<CRM.Model.GlaInvoiceTeamSplit> GlaInvoiceTeamSplits;
+        public readonly List<CRM.Model.GlaInvoiceTeamSplit> GlaInvoiceTeamSplitsAccounts;
+        public readonly List<CRM.Model.GlaInvoiceTeamSplit> GlaInvoiceTeamSplitsInvoices;
+        public readonly List<CRM.Model.GlaInvoiceTeamSplit> GlaInvoiceTeamSplitsInvoiceLineItems;
         private List<Model.Invoice> _generatedInvoices;
 
         public DateTime BillingDate;
@@ -33,11 +37,34 @@ namespace InvoiceCalculation
             this.Engagements = CRM.Data.Engagement.Retrieve()
                 .FindAll(x => x.IsWithinDateTime(this.BillingDate))
                 .FindAll(x => x.ProductType != -1);
+
+            // set parent engagement field
+            foreach (var engagement in this.Engagements)
+            {
+                var otherEngagements = this.Engagements.FindAll(x => x.ClientId == engagement.ClientId);
+
+                foreach (var otherEngagement in otherEngagements)
+                {
+                    var productType = otherEngagement.GetProductTypeDetail();
+                    if (productType.IsServiceOngoing)
+                    {
+                        if (engagement.GetProductTypeDetail().IsTieredRate == false && engagement.GetProductTypeDetail().IsServiceOngoing == false && engagement.ProductType != 11) //vs
+                        {
+                            engagement.HasParentEngagement = true;
+                        }
+                    }
+                }
+            }
+
             this.Engagements = this._filterEngagementsByBillingFrequency();
             this.PlanAccounts = CRM.Data.PlanAccount.Retrieve();
             this.PlanEngagements = CRM.Data.PlanEngagement.Retrieve();
             this.PlanAssets = CRM.Data.PlanAsset.Retrieve();
+            this.GeneralLedgerAccounts = CRM.Data.GeneralLedgerAccount.Retrieve();
             this.GlaInvoiceTeamSplits = CRM.Data.GlaInvoiceTeamSplit.Retrieve();
+            this.GlaInvoiceTeamSplitsAccounts = this.GlaInvoiceTeamSplits.FindAll(x => x.AccountId != Guid.Empty);
+            this.GlaInvoiceTeamSplitsInvoices = this.GlaInvoiceTeamSplits.FindAll(x => x.InvoiceId != Guid.Empty);
+            this.GlaInvoiceTeamSplitsInvoiceLineItems = this.GlaInvoiceTeamSplits.FindAll(x => x.InvoiceLineItemId != Guid.Empty);
         }
 
         /// <summary>
@@ -50,13 +77,22 @@ namespace InvoiceCalculation
                 return;
             }
 
+            var startTime = DateTime.Now;
+
             Console.WriteLine("Calculating invoices");
             this._calculateInvoices();
             Console.WriteLine("Calculating line items");
             this._calculateLineItems();
             Console.WriteLine("Creating and updating invoice records");
             this._createInvoiceRecordsInCrm();
-            Console.WriteLine("Process complete");
+
+            var endTime = DateTime.Now;
+            var duration = (endTime - startTime);
+
+            var finalMessage = "Process complete: ";
+            finalMessage = finalMessage + duration.Minutes.ToString() + "min ";
+            finalMessage = finalMessage + duration.Seconds.ToString() + "sec";
+            Console.WriteLine(finalMessage);
         }
 
         public List<Model.Invoice> CalculateInvoice(Guid engagementId)
@@ -128,6 +164,13 @@ namespace InvoiceCalculation
             {
                 var clientName = row["ClientName"].ToString();
                 var taskName = row["TaskName"].ToString();
+
+                DateTime? overageApprovedOn = null;
+                if (String.IsNullOrWhiteSpace(row["OverageApprovedOn"].ToString()) == false)
+                {
+                    overageApprovedOn = DateTime.Parse(row["OverageApprovedOn"].ToString());
+                }
+
                 var engagement = this.Engagements.Find(x => x.Name == clientName);
 
                 if (engagement == null)
@@ -139,19 +182,35 @@ namespace InvoiceCalculation
                     .FindAll(x => x.EngagementId == engagement.Id)
                     .FindAll(x => x.IsMainInvoice == true);
                 var single = invoiceMaster.RunSingle(clientName, taskName, beginningOfYear);
+
                 foreach (var invoice in invoices)
                 {
-                    var lineItem = new Model.InvoiceLineItem();
+                    var workplaceLineItem = new Model.InvoiceLineItem();
+                    workplaceLineItem.ApprovedOn = overageApprovedOn;
+
+                    var otherLineItem = new Model.InvoiceLineItem();
+                    otherLineItem.ApprovedOn = overageApprovedOn;
+
                     foreach (DataRow row2 in single.Rows)
                     {
-                        var billableHours = decimal.Parse(row2["BillableHours"].ToString());
-                        var billableAmount = decimal.Parse(row2["BillableAmount"].ToString());
+                        var teamId = Guid.Parse(row2["TeamId"].ToString());
+                        var overageWorkplaceHours = decimal.Parse(row2["OverageWorkplaceHours"].ToString());
+                        var overageWorkplaceAmount = decimal.Parse(row2["OverageWorkplaceAmount"].ToString());
+                        var overageOtherHours = decimal.Parse(row2["OverageOtherHours"].ToString());
+                        var overageOtherAmount = decimal.Parse(row2["OverageOtherAmount"].ToString());
+
                         var startTime = DateTime.Parse(row2["StartTime"].ToString());
 
-                        lineItem.Name = taskName;
-                        lineItem.LineItemType = Model.LineItemType.Fee;
+                        workplaceLineItem.Name = taskName;
+                        workplaceLineItem.TeamId = teamId;
+                        workplaceLineItem.IsWorkplace = true;
+                        workplaceLineItem.LineItemType = Model.LineItemType.Fee;
 
-                        // i need make in advanced billing pull amounts from previous quarter
+                        otherLineItem.Name = taskName;
+                        otherLineItem.TeamId = teamId;
+                        otherLineItem.IsWorkplace = false;
+                        otherLineItem.LineItemType = Model.LineItemType.Fee;
+
                         if (invoice.BillingType == Model.BillingType.InAdvanced)
                         {
                             var range = (invoice.EndDate - invoice.StartDate).TotalDays - 3;
@@ -161,51 +220,74 @@ namespace InvoiceCalculation
 
                             if (startTime >= billingStartDate && startTime < billingEndDate)
                             {
-                                lineItem.Amount = lineItem.Amount + billableAmount;
-
-                                if (String.IsNullOrWhiteSpace(lineItem.Description))
+                                workplaceLineItem.Amount = workplaceLineItem.Amount + overageWorkplaceAmount;
+                                if (String.IsNullOrWhiteSpace(workplaceLineItem.Description))
                                 {
-                                    lineItem.Description = billableHours.ToString("0.00") + " Hours";
+                                    workplaceLineItem.Description = overageWorkplaceHours.ToString("0.00") + " Hours";
                                 }
                                 else
                                 {
-                                    var hours = decimal.Parse(lineItem.Description.Replace(" Hours", ""));
-                                    lineItem.Description = (hours + billableHours).ToString("0.00") + " Hours";
+                                    var hours = decimal.Parse(workplaceLineItem.Description.Replace(" Hours", ""));
+                                    workplaceLineItem.Description = (hours + overageWorkplaceHours).ToString("0.00") + " Hours";
+                                }
+
+                                otherLineItem.Amount = otherLineItem.Amount + overageOtherAmount;
+                                if (String.IsNullOrWhiteSpace(otherLineItem.Description))
+                                {
+                                    otherLineItem.Description = overageOtherHours.ToString("0.00") + " Hours";
+                                }
+                                else
+                                {
+                                    var hours = decimal.Parse(otherLineItem.Description.Replace(" Hours", ""));
+                                    otherLineItem.Description = (hours + overageOtherHours).ToString("0.00") + " Hours";
                                 }
                             }
-                            lineItem.StartDate = DateTime.SpecifyKind(billingStartDate, DateTimeKind.Utc).AddHours(12);
-                            lineItem.EndDate = DateTime.SpecifyKind(billingEndDate, DateTimeKind.Utc).AddSeconds(1).AddHours(-12);
+
+                            workplaceLineItem.StartDate = DateTime.SpecifyKind(billingStartDate, DateTimeKind.Utc).AddHours(12);
+                            workplaceLineItem.EndDate = DateTime.SpecifyKind(billingEndDate, DateTimeKind.Utc).AddSeconds(1).AddHours(-12);
+
+                            otherLineItem.StartDate = DateTime.SpecifyKind(billingStartDate, DateTimeKind.Utc).AddHours(12);
+                            otherLineItem.EndDate = DateTime.SpecifyKind(billingEndDate, DateTimeKind.Utc).AddSeconds(1).AddHours(-12);
                         }
                         else
                         {
                             if (startTime.Date >= invoice.StartDate.Date && startTime.Date < invoice.EndDate.Date)
                             {
-                                lineItem.Amount = lineItem.Amount + billableAmount;
+                                workplaceLineItem.Amount = workplaceLineItem.Amount + overageWorkplaceAmount;
+                                otherLineItem.Amount = otherLineItem.Amount + overageOtherAmount;
                             }
 
-                            lineItem.StartDate = invoice.StartDate;
-                            lineItem.EndDate = invoice.EndDate;
+                            workplaceLineItem.StartDate = invoice.StartDate;
+                            workplaceLineItem.EndDate = invoice.EndDate;
+
+                            otherLineItem.StartDate = invoice.StartDate;
+                            otherLineItem.EndDate = invoice.EndDate;
                         }
                     }
 
-                    if (lineItem.Amount > 0)
+                    if (workplaceLineItem.Amount > 0)
                     {
-                        invoice.LineItems.Add(lineItem);
+                        invoice.LineItems.Add(workplaceLineItem);
+                    }
+
+                    if (otherLineItem.Amount > 0)
+                    {
+                        invoice.LineItems.Add(otherLineItem);
                     }
                 }
             }
 
             foreach (var invoice in this._generatedInvoices.FindAll(x => x.InvoiceCredit > 0))
             {
+                var engagement = this.Engagements.Find(x => x.Id == invoice.EngagementId);
+
                 var lineItem = new Model.InvoiceLineItem();
                 lineItem.Name = "Automatically Generated Invoice Credit";
                 lineItem.LineItemType = Model.LineItemType.Credit;
                 lineItem.Amount = invoice.InvoiceCredit;
                 lineItem.StartDate = invoice.StartDate;
                 lineItem.EndDate = invoice.EndDate;
-                //lineItem.GeneralLedgerAccountId = 
-                //lineItem.TeamId = 
-                invoice.LineItems.Add(lineItem);
+                //invoice.LineItems.Add(lineItem); // removed on 11/21/2016 - will be calculated manually for the time being
             }
         }
 
@@ -265,46 +347,194 @@ namespace InvoiceCalculation
                 }
 
                 CRM.Data.InvoiceLineItem.Save(crmLineItem);
+                this._createGlaInvoiceLineItemTeamSplitRecordsInCrm(crmInvoice, crmLineItem, lineItem);
             }
-            
+        }
+
+        private void _createGlaInvoiceLineItemTeamSplitRecordsInCrm(CRM.Model.Invoice crmInvoice, CRM.Model.InvoiceLineItem crmInvoiceLineItem, Model.InvoiceLineItem invoiceLineItem)
+        {
+            var engagement = this.Engagements.Find(x => x.Id == crmInvoice.EngagementId);
+
+            if (engagement.IsOngoingEngagement() && invoiceLineItem.LineItemType == Model.LineItemType.Fee)
+            {
+                var split = new CRM.Model.GlaInvoiceTeamSplit();
+                split.InvoiceLineItemId = crmInvoiceLineItem.Id;
+                split.StartDate = (DateTime)crmInvoiceLineItem.StartDate;
+                split.EndDate = (DateTime)crmInvoiceLineItem.EndDate;
+                split.TotalSplit = 100.00m;
+                split.ProductType = engagement.ProductType;
+
+                if (invoiceLineItem.IsWorkplace && invoiceLineItem.TeamId == new Guid("9FB7C526-7EAF-E311-B765-D8D385C29900")) // Workplace && RetireAdvisers
+                {
+                    if (invoiceLineItem.ApprovedOn == null || ((DateTime)invoiceLineItem.ApprovedOn).Date.AddMonths(12) > invoiceLineItem.StartDate.Date) // IsNew
+                    {
+                        split.GeneralLedgerAccountId = this.GeneralLedgerAccounts.Find(x => x.QuickBooksAccountNumber.Equals("4042")).Id;
+                    }
+                    else // IsLegacy
+                    {
+                        split.GeneralLedgerAccountId = this.GeneralLedgerAccounts.Find(x => x.QuickBooksAccountNumber.Equals("4046")).Id;
+                    }
+                }
+                else
+                {
+                    switch (invoiceLineItem.TeamId.ToString().ToUpper())
+                    {
+                        case "7671B7ED-E4BA-DB11-9697-001143F10531": //ERISA
+                            split.GeneralLedgerAccountId = this.GeneralLedgerAccounts.Find(x => x.QuickBooksAccountNumber.Equals("4020")).Id;
+                            break;
+                        case "7287DE04-E5BA-DB11-9697-001143F10531": //Investment
+                            split.GeneralLedgerAccountId = this.GeneralLedgerAccounts.Find(x => x.QuickBooksAccountNumber.Equals("4030")).Id;
+                            break;
+                        case "9FB7C526-7EAF-E311-B765-D8D385C29900": //RetireAdvisers
+                            split.GeneralLedgerAccountId = this.GeneralLedgerAccounts.Find(x => x.QuickBooksAccountNumber.Equals("4040")).Id;
+                            break;
+                        case "F8ECF41B-E5BA-DB11-9697-001143F10531": //Vendor
+                            split.GeneralLedgerAccountId = this.GeneralLedgerAccounts.Find(x => x.QuickBooksAccountNumber.Equals("4050")).Id;
+                            break;
+                    }
+                }
+
+                var splitsInvoice = (CRM.Model.GlaInvoiceTeamSplit)this.GlaInvoiceTeamSplitsInvoiceLineItems
+                    .FindAll(x => x.InvoiceLineItemId == crmInvoiceLineItem.Id)
+                    .FindAll(x => x.GeneralLedgerAccountId == split.GeneralLedgerAccountId || (x.GeneralLedgerAccountId == Guid.Empty && split.GeneralLedgerAccountId == Guid.Empty))
+                    .Find(x => x.StartDate.Date == split.StartDate.Date || x.StartDate.Date == ((DateTime)crmInvoice.StartDate).Date);
+
+                var isNew = true;
+                if (splitsInvoice != null)
+                {
+                    split.Id = splitsInvoice.Id;
+                    isNew = false;
+                }
+
+                CRM.Data.GlaInvoiceTeamSplit.Save(split, isNew);
+            }
+            else
+            {
+                var splitsAccounts = this.GlaInvoiceTeamSplitsAccounts
+                    .FindAll(x => x.AccountId == engagement.ClientId)
+                    .FindAll(x => x.ProductType == engagement.ProductType)
+                    .FindAll(x => x.StartDate.Date <= ((DateTime)crmInvoice.EndDate).Date)
+                    .FindAll(x => x.EndDate.Date > ((DateTime)crmInvoice.StartDate).Date);
+
+                foreach (var split in splitsAccounts)
+                {
+                    var splitsInvoice = (CRM.Model.GlaInvoiceTeamSplit)this.GlaInvoiceTeamSplitsInvoiceLineItems
+                        .FindAll(x => x.InvoiceLineItemId == crmInvoiceLineItem.Id)
+                        .FindAll(x => x.GeneralLedgerAccountId == split.GeneralLedgerAccountId || (x.GeneralLedgerAccountId == Guid.Empty && split.GeneralLedgerAccountId == Guid.Empty))
+                        .Find(x => x.StartDate.Date == split.StartDate.Date || x.StartDate.Date == ((DateTime)crmInvoice.StartDate).Date);
+
+                    var isNew = true;
+                    if (splitsInvoice != null)
+                    {
+                        split.Id = splitsInvoice.Id;
+                        isNew = false;
+                    }
+
+                    var startDate = split.StartDate;
+                    if (split.StartDate.Date <= ((DateTime)crmInvoice.StartDate).Date)
+                    {
+                        split.StartDate = (DateTime)crmInvoice.StartDate;
+                    }
+                    else
+                    {
+                        var coveredDays = (decimal)(((DateTime)crmInvoice.EndDate).Date - split.StartDate.Date).TotalDays;
+                        var totalDays = (decimal)(((DateTime)crmInvoice.EndDate).Date - ((DateTime)crmInvoice.StartDate).Date).TotalDays;
+                        split.TotalSplit = (coveredDays / totalDays) * 100.00m;
+                    }
+
+                    var endDate = split.EndDate;
+                    if (split.EndDate.Date >= ((DateTime)crmInvoice.EndDate).Date)
+                    {
+                        split.EndDate = (DateTime)crmInvoice.EndDate;
+                    }
+                    else
+                    {
+                        var coveredDays = (decimal)(split.EndDate.Date - ((DateTime)crmInvoice.StartDate).Date).TotalDays;
+                        var totalDays = (decimal)(((DateTime)crmInvoice.EndDate).Date - ((DateTime)crmInvoice.StartDate).Date).TotalDays;
+                        split.TotalSplit = (coveredDays / totalDays) * 100.00m;
+                    }
+
+                    var accountId = split.AccountId;
+                    var invoiceId = split.InvoiceId;
+
+                    split.InvoiceId = Guid.Empty;
+                    split.AccountId = Guid.Empty;
+                    split.InvoiceLineItemId = crmInvoiceLineItem.Id;
+                    CRM.Data.GlaInvoiceTeamSplit.Save(split, isNew);
+
+                    split.AccountId = accountId;
+                    split.InvoiceId = invoiceId;
+                    split.StartDate = startDate;
+                    split.EndDate = endDate;
+                }
+            }
+
         }
 
         private void _createGlaInvoiceTeamSplitRecordsInCrm(CRM.Model.Invoice crmInvoice, Model.Invoice invoice)
         {
+
             var engagement = this.Engagements.Find(x => x.Id == crmInvoice.EngagementId);
-            var splits = this.GlaInvoiceTeamSplits
+            var splitsAccounts = this.GlaInvoiceTeamSplitsAccounts
                 .FindAll(x => x.AccountId == engagement.ClientId)
                 .FindAll(x => x.ProductType == engagement.ProductType)
-                .FindAll(x => x.StartDate <= crmInvoice.StartDate)
-                .FindAll(x => x.EndDate >= crmInvoice.EndDate);
+                .FindAll(x => x.StartDate.Date <= ((DateTime)crmInvoice.EndDate).Date)
+                .FindAll(x => x.EndDate.Date > ((DateTime)crmInvoice.StartDate).Date);
 
-            foreach (var split in splits)
+            foreach (var split in splitsAccounts)
             {
-                var crmSplit = this.GlaInvoiceTeamSplits
+                var splitsInvoice = this.GlaInvoiceTeamSplitsInvoices
                     .FindAll(x => x.InvoiceId == crmInvoice.Id)
-                    .FindAll(x => x.GeneralLedgerAccountId == split.GeneralLedgerAccountId)
-                    .Find(x => x.StartDate.Date == split.StartDate.Date);
+                    .FindAll(x => x.GeneralLedgerAccountId == split.GeneralLedgerAccountId || (x.GeneralLedgerAccountId == Guid.Empty && split.GeneralLedgerAccountId == Guid.Empty))
+                    .Find(x => x.StartDate.Date == split.StartDate.Date || x.StartDate.Date == ((DateTime)crmInvoice.StartDate).Date);
 
                 var isNew = true;
-                if (crmSplit != null)
+                if (splitsInvoice != null)
                 {
-                    split.Id = crmSplit.Id;
+                    split.Id = splitsInvoice.Id;
                     isNew = false;
                 }
 
-                if (split.StartDate.Date < ((DateTime)crmInvoice.StartDate).Date)
+                var totalSplit = split.TotalSplit;
+                var startDate = split.StartDate;
+                if (split.StartDate.Date <= ((DateTime)crmInvoice.StartDate).Date)
                 {
                     split.StartDate = (DateTime)crmInvoice.StartDate;
                 }
+                else
+                {
+                    var coveredDays = 1 + (decimal)(((DateTime)crmInvoice.EndDate).Date - split.StartDate.Date).TotalDays;
+                    var totalDays = 1 + (decimal)(((DateTime)crmInvoice.EndDate).Date - ((DateTime)crmInvoice.StartDate).Date).TotalDays;
+                    split.TotalSplit = (coveredDays / totalDays) * 100.00m;
+                }
 
-                if (split.EndDate.Date > ((DateTime)crmInvoice.EndDate).Date)
+                var endDate = split.EndDate;
+                if (split.EndDate.Date >= ((DateTime)crmInvoice.EndDate).Date)
                 {
                     split.EndDate = (DateTime)crmInvoice.EndDate;
                 }
+                else
+                {
+                    var coveredDays = 1 + (decimal)(split.EndDate.Date - ((DateTime)crmInvoice.StartDate).Date).TotalDays;
+                    var totalDays = 1 + (decimal)(((DateTime)crmInvoice.EndDate).Date - ((DateTime)crmInvoice.StartDate).Date).TotalDays;
+                    split.TotalSplit = (coveredDays / totalDays) * 100.00m;
+                }
+
+                var accountId = split.AccountId;
+                var invoiceId = split.InvoiceId;
+                var invoiceLineItemId = split.InvoiceLineItemId;
 
                 split.InvoiceId = crmInvoice.Id;
                 split.AccountId = Guid.Empty;
+                split.InvoiceLineItemId = Guid.Empty;
                 CRM.Data.GlaInvoiceTeamSplit.Save(split, isNew);
+
+                split.AccountId = accountId;
+                split.InvoiceId = invoiceId;
+                split.InvoiceLineItemId = invoiceLineItemId;
+                split.StartDate = startDate;
+                split.EndDate = endDate;
+                split.TotalSplit = totalSplit;
             }
         }
 

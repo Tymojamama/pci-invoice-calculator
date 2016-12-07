@@ -15,6 +15,8 @@ namespace InvoiceCalculation.Model
         public string BillingFrequency;
         public string BillingSchedule;
         public string BillingLength;
+        public bool IsTieredRate;
+        public bool IsServiceOngoing;
 
         public ProductType()
         {

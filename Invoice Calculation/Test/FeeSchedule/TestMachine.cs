@@ -196,7 +196,7 @@ namespace InvoiceCalculation.Test.FeeSchedule
         {
             var result = new List<UnitTest>();
 
-            using (var parser = new TextFieldParser(@"C:\Users\zallen\Desktop\UnitTests.csv"))
+            using (var parser = new TextFieldParser(@"\\PC03\Operations\2.  operations team\IT\Invoice Solution\Required Files\UnitTests.csv"))
             {
                 parser.TextFieldType = FieldType.Delimited;
                 parser.SetDelimiters(",");

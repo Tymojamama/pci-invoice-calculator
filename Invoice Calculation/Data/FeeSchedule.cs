@@ -18,7 +18,7 @@ namespace InvoiceCalculation.Data
         {
             var feeSchedules = new List<Model.FeeSchedule>();
 
-            using (var parser = new TextFieldParser(@"C:\Users\zallen\Desktop\FeeSchedules.csv"))
+            using (var parser = new TextFieldParser(@"\\PC03\Operations\2.  operations team\IT\Invoice Solution\Required Files\FeeSchedules.csv"))
             {
                 parser.TextFieldType = FieldType.Delimited;
                 parser.SetDelimiters(",");

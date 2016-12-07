@@ -29,5 +29,11 @@ namespace InvoiceCalculation.CRM.Model
             get { return base.GetPropertyValue<String>(DataConstants.new_planname, PropertyType.String, String.Empty); }
             set { base.SetPropertyValue<String>(DataConstants.new_planname, PropertyType.String, value); }
         }
+
+        public DateTime TerminationDate
+        {
+            get { return base.GetPropertyValue<DateTime>("new_plantermdate", PropertyType.DateTime, DateTime.MaxValue); }
+            set { base.SetPropertyValue<DateTime>("new_plantermdate", PropertyType.DateTime, value); }
+        }
     }
 }
