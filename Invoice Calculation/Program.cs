@@ -267,17 +267,17 @@ namespace InvoiceCalculation
             var totalDays = 0d;
             var remainingDays = 0d;
 
-            if (startDate >= beginningOfQuarter1 && startDate < endingOfQuarter1)
+            if (startDate >= beginningOfQuarter1 && startDate <= endingOfQuarter1)
             {
                 totalDays = (beginningOfQuarter2 - beginningOfQuarter1).TotalDays;
                 remainingDays = (beginningOfQuarter2 - startDate).TotalDays;
             }
-            else if (startDate >= beginningOfQuarter2 && startDate < endingOfQuarter2)
+            else if (startDate >= beginningOfQuarter2 && startDate <= endingOfQuarter2)
             {
                 totalDays = (beginningOfQuarter3 - beginningOfQuarter2).TotalDays;
                 remainingDays = (beginningOfQuarter3 - startDate).TotalDays;
             }
-            else if (startDate >= beginningOfQuarter3 && startDate < endingOfQuarter3)
+            else if (startDate >= beginningOfQuarter3 && startDate <= endingOfQuarter3)
             {
                 totalDays = (beginningOfQuarter4 - beginningOfQuarter3).TotalDays;
                 remainingDays = (beginningOfQuarter4 - startDate).TotalDays;

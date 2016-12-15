@@ -115,7 +115,7 @@ namespace InvoiceCalculation.CRM.Model
             var after = false;
             var before = false;
 
-            if (this.EffectiveDate <= dateTime)
+            if (this.EffectiveDate.Date <= dateTime.Date)
             {
                 after = true;
             }
