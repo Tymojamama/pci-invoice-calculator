@@ -36,11 +36,6 @@ namespace InvoiceCalculation
             this._planAssetValue = engagement.GetAssetsForInvoice(generator.BillingDate, generator.PlanEngagements, generator.PlanAccounts, generator.PlanAssets, this.getPreviousBillingDate().AddDays(1));
 
             this.calculateInvoiceFeesAndCredits();
-
-            if (this._engagement.Name.StartsWith("Allen, Rick & Monica"))
-            {
-
-            }
         }
 
         public List<Model.Invoice> GetInvoices()
@@ -69,7 +64,7 @@ namespace InvoiceCalculation
                 result.Add(this.getInvoiceNextBillingPeriod());
             }
 
-            if (this.isBillingTypeSwitch())
+            if (this.isBillingTypeSwitch() && !(termPreviousBillingCycle && isInAdvanced))
             {
                 if (this._engagementTerminationDate == DateTime.MaxValue)
                 {
