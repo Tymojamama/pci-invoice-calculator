@@ -311,6 +311,11 @@ namespace InvoiceCalculation
                 this._invoiceFee = this._invoiceFee + this._engagement.FixedProjectFeeForInvoicePeriod(this._generator.BillingDate, this._isNewEngagement);
                 this._invoiceFee = this._invoiceFee - (this._engagement.AnnualFeeOffset / 4m);
 
+                if (this._annualFee == this._engagement.AnnualFeeOffset)
+                {
+                    this._invoiceFee = 0m;
+                }
+
                 if (this._isTerminatedEngagement)
                 {
                     //var planAssets = this._engagement.GetAssetsForInvoice(this.getPreviousBillingDate(), this._generator.PlanEngagements, this._generator.PlanAccounts, this._generator.PlanAssets, this.getPreviousBillingDate().AddDays(1));

@@ -302,7 +302,7 @@ namespace InvoiceCalculation
                 .FindAll(x => x.EngagementId == invoice.EngagementId)
                 .Find(x => x.BillingType == (int)invoice.BillingType);
 
-            if (invoice.InvoiceFee + invoice.InvoiceCredit + invoice.LineItems.Count == 0)
+            if (invoice.InvoiceFee + invoice.InvoiceCredit + invoice.LineItems.Count <= 0)
             {
                 return;
             }
