@@ -219,7 +219,7 @@ namespace InvoiceCalculation
                             billingStartDate = new DateTime(billingStartDate.Year, billingStartDate.Month, 1);
                             var billingEndDate = invoice.StartDate.Date.AddSeconds(-1);
 
-                            if (startTime >= billingStartDate && startTime < billingEndDate)
+                            if (startTime.Date >= billingStartDate.Date && startTime.Date < billingEndDate.Date)
                             {
                                 workplaceLineItem.Amount = workplaceLineItem.Amount + overageWorkplaceAmount;
                                 if (String.IsNullOrWhiteSpace(workplaceLineItem.Description))
@@ -252,7 +252,7 @@ namespace InvoiceCalculation
                         }
                         else
                         {
-                            if (startTime.Date >= invoice.StartDate.Date && startTime.Date < invoice.EndDate.Date)
+                            if (startTime.Date >= invoice.StartDate.Date && startTime.Date <= invoice.EndDate.Date)
                             {
                                 workplaceLineItem.Amount = workplaceLineItem.Amount + overageWorkplaceAmount;
                                 otherLineItem.Amount = otherLineItem.Amount + overageOtherAmount;
