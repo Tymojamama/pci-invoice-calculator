@@ -181,6 +181,7 @@ namespace InvoiceCalculation
                 var invoices = this._generatedInvoices
                     .FindAll(x => x.EngagementId == engagement.Id)
                     .FindAll(x => x.IsMainInvoice == true);
+
                 var single = invoiceMaster.RunSingle(clientName, taskName, beginningOfYear);
 
                 foreach (var invoice in invoices)

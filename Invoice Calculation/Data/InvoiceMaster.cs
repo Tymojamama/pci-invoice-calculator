@@ -18,7 +18,7 @@ namespace InvoiceCalculation.Data
         {
             Hashtable parameterList = new Hashtable();
             parameterList.Add("@Year", year);
-            return Database.ExecuteStoredProcedureQuery("[dbo].[usp_CRM_InvoiceReport]", parameterList);
+            return Database.ExecuteStoredProcedureQuery("[dbo].[usp_CRM_InvoiceReport_v2]", parameterList);
         }
 
         public DataTable RunSingle(string clientName, string taskName, DateTime year)
