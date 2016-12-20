@@ -355,7 +355,7 @@ namespace InvoiceCalculation
         private void _createGlaInvoiceLineItemTeamSplitRecordsInCrm(CRM.Model.Invoice crmInvoice, CRM.Model.InvoiceLineItem crmInvoiceLineItem, Model.InvoiceLineItem invoiceLineItem)
         {
             var engagement = this.Engagements.Find(x => x.Id == crmInvoice.EngagementId);
-
+            
             if (engagement.IsOngoingEngagement() && invoiceLineItem.LineItemType == Model.LineItemType.Fee)
             {
                 var split = new CRM.Model.GlaInvoiceTeamSplit();

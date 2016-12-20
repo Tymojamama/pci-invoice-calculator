@@ -33,7 +33,7 @@ namespace InvoiceCalculation
             this._engagementTierLevel = (int)engagement.Tier;
             this._isNewEngagement = engagement.IsNewOnBillingDate(generator.BillingDate);
             this._isTerminatedEngagement = engagement.IsTerminatedOnBillingDate(generator.BillingDate);
-            this._planAssetValue = engagement.GetAssetsForInvoice(generator.BillingDate, generator.PlanEngagements, generator.PlanAccounts, generator.PlanAssets, this.getPreviousBillingDate().AddDays(1));
+            this._planAssetValue = this.getPlanAssets(engagement, generator);
 
             this.calculateInvoiceFeesAndCredits();
         }
@@ -91,8 +91,30 @@ namespace InvoiceCalculation
             return newInvoice;
         }
 
-        private DateTime getPreviousBillingDate()
+        private DateTime getPreviousBillingDate(DateTime? billingDate = null)
         {
+            if (billingDate != null)
+            {
+                if (this._engagementProductType.BillingFrequency == "Quarterly")
+                {
+                    var date = ((DateTime)billingDate).AddMonths(-3);
+                    var daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
+                    return new DateTime(date.Year, date.Month, daysInMonth);
+                }
+                else if (this._engagementProductType.BillingFrequency == "Monthly")
+                {
+                    var date = ((DateTime)billingDate).AddMonths(-1);
+                    var daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
+                    return new DateTime(date.Year, date.Month, daysInMonth);
+                }
+                else
+                {
+                    var date = ((DateTime)billingDate).AddMonths(-12);
+                    var daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
+                    return new DateTime(date.Year, date.Month, daysInMonth);
+                }
+            }
+
             if (this._engagementProductType.BillingFrequency == "Quarterly")
             {
                 var date = this._generator.BillingDate.AddMonths(-3);
@@ -272,6 +294,8 @@ namespace InvoiceCalculation
         /// <remarks>Kind of an awkward method. Needs refactoring.</remarks>
         private bool isInvalidInvoicePeriodForEngagement(Model.Invoice invoice)
         {
+            var productType = this._engagement.GetProductTypeDetail();
+
             // Vendor Search
             if (this._engagement.ProductType == 11)
             {
@@ -293,6 +317,14 @@ namespace InvoiceCalculation
                     }
                 }
                 else
+                {
+                    return true;
+                }
+            }
+            else if (productType.IsTieredRate == false && productType.IsServiceOngoing == false) // other services and projects
+            {
+                var endOfQuarterMonths = new int[] { 3, 6, 9, 12 };
+                if (this._engagement.HasParentEngagement == true && endOfQuarterMonths.Contains(invoice.BilledOn.Month) == false)
                 {
                     return true;
                 }
@@ -340,7 +372,7 @@ namespace InvoiceCalculation
             if (planAssetValue != 0 || this.getErisaVendorProducTypes().Contains(this._engagement.ProductType))
             {
                 newInvoice.AnnualFee = Calculator.CalculateAnnualFee(this._engagementProductType, this._generator.BillingDate, this._engagementEffectiveDate, planAssetValue, this._engagementTierLevel);
-                newInvoice.InvoiceFee = Calculator.CalculateInvoiceFee(this._annualFee, this._engagementProductType, this._generator.BillingDate, this._engagementEffectiveDate, this._isTerminatedEngagement, false, this._engagementEffectiveDate);
+                newInvoice.InvoiceFee = Calculator.CalculateInvoiceFee(newInvoice.AnnualFee, this._engagementProductType, this._generator.BillingDate, this._engagementEffectiveDate, this._isTerminatedEngagement, false, this._engagementEffectiveDate);
                 newInvoice.InvoiceFee = newInvoice.InvoiceFee + this._engagement.FixedProjectFeeForInvoicePeriod(this._generator.BillingDate, false);
                 newInvoice.InvoiceCredit = Calculator.CalculateInvoiceCredit(this._isTerminatedEngagement, this._invoiceFee, this._engagementTerminationDate, this._engagementProductType);
             }
@@ -380,6 +412,40 @@ namespace InvoiceCalculation
             invoice.EngagementId = this._engagement.Id;
             invoice.ClientId = this._engagement.ClientId;
             return invoice;
+        }
+
+        private Decimal getPlanAssets(CRM.Model.Engagement engagement, Generator generator)
+        {
+            var planAssetValue = engagement.GetAssetsForInvoice(generator.BillingDate, generator.PlanEngagements, generator.PlanAccounts, generator.PlanAssets, this.getPreviousBillingDate().AddDays(1));
+
+            // is not first, tiered rate, ongoing engagement and is in arrears
+            var billingType = Calculator.GetInvoiceBillingType(this._engagementProductType, this._engagementEffectiveDate, this._generator.BillingDate, this._isNewEngagement);
+            var billingLength = (this._generator.BillingDate.Date - this.getPreviousBillingDate().Date).Days;
+            var isFirstEngagementInvoice = !(this._generator.BillingDate >= this._engagement.EffectiveDate.AddDays(billingLength));
+            if (isFirstEngagementInvoice)
+            {
+                var clientId = this._engagement.ClientId;
+                var clientEngagements = this._generator.Engagements.FindAll(x => x.ClientId == clientId);
+                if (clientEngagements.FindAll(x => x.IsTieredOngoingEngagement()).Count > 0)
+                {
+                    var firstProductType = clientEngagements.FindAll(x => x.IsTieredOngoingEngagement()).OrderBy(x => x.EffectiveDate).First().ProductType;
+                    if (firstProductType != this._engagement.ProductType)
+                    {
+                        isFirstEngagementInvoice = false;
+                    }
+                }
+            }
+
+            if (this._engagement.IsTieredOngoingEngagement() && !isFirstEngagementInvoice && billingType == Model.BillingType.InArrears)
+            {
+                planAssetValue = engagement.GetAssetsForInvoice(this.getPreviousBillingDate(), generator.PlanEngagements, generator.PlanAccounts, generator.PlanAssets, this.getPreviousBillingDate(this.getPreviousBillingDate()).AddDays(1));
+            }
+            else if (billingType == Model.BillingType.InAdvanced && this._isTerminatedEngagement)
+            {
+                planAssetValue = engagement.GetAssetsForInvoice(this.getPreviousBillingDate(), generator.PlanEngagements, generator.PlanAccounts, generator.PlanAssets, this.getPreviousBillingDate(this.getPreviousBillingDate()).AddDays(1));
+            }
+
+            return planAssetValue;
         }
     }
 }

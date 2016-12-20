@@ -17,8 +17,8 @@ namespace InvoiceCalculation.CRM.Broker
         {
             var token = new CrmAuthenticationToken();
             token.AuthenticationType = 0;
-            token.OrganizationName = "pccrm";
-            //token.OrganizationName = "testenvironment";
+            //token.OrganizationName = "pccrm";
+            token.OrganizationName = "testenvironment";
 
             Console.WriteLine("Connecting to CRM: " + token.OrganizationName);
 

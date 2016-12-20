@@ -108,7 +108,7 @@ namespace InvoiceCalculation.CRM.Model
             set { base.SetPropertyValue<int>("statuscode", PropertyType.Status, value); }
         }
 
-        public bool HasParentEngagement = false;
+        public bool HasParentEngagement = false; // set at generator object
 
         public bool IsWithinDateTime(DateTime dateTime)
         {
