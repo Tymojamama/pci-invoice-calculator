@@ -1,0 +1,12 @@
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\invoice-calculator\bin\Debug\InvoiceCalculation.exe.config
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\invoice-calculator\obj\Debug\InvoiceCalculation.exe
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\invoice-calculator\obj\Debug\InvoiceCalculation.pdb
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\invoice-calculator\bin\Debug\InvoiceCalculation.exe.manifest
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\invoice-calculator\bin\Debug\InvoiceCalculation.application
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\invoice-calculator\bin\Debug\InvoiceCalculation.exe
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\invoice-calculator\bin\Debug\InvoiceCalculation.pdb
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\invoice-calculator\bin\Debug\PensionConsultants.Data.dll
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\invoice-calculator\bin\Debug\PensionConsultants.Data.pdb
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\invoice-calculator\obj\Debug\invoice-calculator.csprojResolveAssemblyReference.cache
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\invoice-calculator\obj\Debug\InvoiceCalculation.exe.manifest
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\invoice-calculator\obj\Debug\InvoiceCalculation.application

@@ -12,3 +12,6 @@ C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoic
 C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\InvoiceCalculation.exe.manifest
 C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\InvoiceCalculation.application
 C:\Users\zallen\Documents\Visual Studio 2013\Projects\Invoice Calculation\Invoice Calculation\obj\Debug\InvoiceCalculation.csprojResolveAssemblyReference.cache
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\Invoice Calculation\bin\Debug\InvoiceCalculation.exe.config
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\Invoice Calculation\obj\Debug\InvoiceCalculation.exe
+C:\Users\zallen\Documents\GitHub\pci-invoice-calculator\Invoice Calculation\obj\Debug\InvoiceCalculation.pdb

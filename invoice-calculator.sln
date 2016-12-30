@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InvoiceCalculation", "Invoice Calculation\InvoiceCalculation.csproj", "{53186C23-53B1-4DAF-BA5A-8023E6989D29}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "invoice-calculator", "invoice-calculator\invoice-calculator.csproj", "{53186C23-53B1-4DAF-BA5A-8023E6989D29}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
